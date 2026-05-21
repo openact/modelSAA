@@ -8,8 +8,5 @@ globals:
     AssetTradBondAssump: AssetTradBondAssump
     AssetTradBondDistByRatingByTerm: AssetTradBondDistByRatingByTerm
     RF_Curves: RF_Curves
-    Econ: ECON_202512
-    ESD: RBC_FinalMA_Base_CE
     SAA_Sims: SAA_Sims
     StressBondSpdByRatingByTerm: StressBondSpdByRatingByTerm
-    aBonds: ASSETS_BONDS_RN
