@@ -1,0 +1,4 @@
+# format: indent by 2 spaces
+names:
+  - PCR_TOTAL
+  - TEST_STR_VAR

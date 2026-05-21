@@ -1,0 +1,5 @@
+﻿KEY,VALUE,DESCRIPTION
+1,BondGovtFixed,Govt Bond Fixed
+3,BondGovtFloat,Govt Bond Float
+11,BondCorpFixed,Corp Bond Fixed
+21,BondCorpFloat,Corp Bond Float

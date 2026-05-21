@@ -1,0 +1,6 @@
+﻿KEY,VALUE,DESCRIPTION
+1,INT,Interest Rate
+2,SPD,Credit Spread
+3,EQ,Equity
+4,PROP,Property
+5,FX,Currency

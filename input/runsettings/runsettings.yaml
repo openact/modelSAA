@@ -1,0 +1,35 @@
+runs:
+  RUN_001:
+    name: RUN_001
+    structure: StructureALM
+    simulations: 1~2
+    variableSets:
+      - default
+    parameters:
+      - default
+    options:
+      - default
+    diagnostics:
+      - diagnostics
+    filenames:
+      - default
+    fileLocations:
+      - default
+    seriatimResults: true
+  RUN_002:
+    name: RUN_002 #CE
+    structure: StructureALM
+    simulations: 1
+    variableSets:
+      - run2
+    parameters:
+      - default
+    options:
+      - default
+    diagnostics:
+      - diagnostics
+    filenames:
+      - default
+    fileLocations:
+      - default
+    seriatimResults: true

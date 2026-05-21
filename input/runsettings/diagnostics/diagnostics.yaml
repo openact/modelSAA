@@ -1,0 +1,28 @@
+# 诊断开关与过滤配置。
+# 每项格式：
+#   <traceName>:
+#     enabled: 1               # 1 = 开启，0 / 缺省 = 关闭
+#     <DimName>: <whitelist>   # 过滤字段名大小写不敏感（内部统一转为小写）
+#
+# DiagKey 命名规则：lowerCamelCase(name) + "Trace"
+#   zcb_curve     → zcbCurveTrace
+#   spd_curve     → spdCurveTrace
+#   esd_snapshot  → esdSnapshotTrace
+#   bond_record   → bondRecordTrace
+globals:
+  diagnostics:
+    zcbCurveTrace:
+      enabled: 1
+      economy: USD_HKPLG       # 逗号分隔 economy 白名单；空 = trace 全部
+    bondRecordTrace:
+      enabled: 1
+    esdSnapshotTrace:
+      enabled: 1
+    spdCurveTrace:
+      enabled: 1
+      economy: USD_HKPLG       # 逗号分隔 economy 白名单；空 = trace 全部
+      spreadBand: 1,2           # 逗号分隔 spreadBand 白名单；空 = trace 全部
+    rdfCurveTrace:
+      enabled: 1
+      economy: USD_HKPLG       # 逗号分隔 economy 白名单；空 = trace 全部
+      spreadBand: 1,2           # 逗号分隔 spreadBand 白名单；空 = trace 全部

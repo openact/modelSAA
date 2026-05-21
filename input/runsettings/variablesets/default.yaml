@@ -1,0 +1,14 @@
+# list of global parameters, switches, etc for a run
+# flags - map[string]string
+globals:
+  variableSets:
+     calculatedVariables:
+        - ALM
+        - ALM_BONDS
+     storedVariables:
+        - ALM
+        - ALM_BONDS
+     aggregatedVariables:
+        - ALM_KRI
+        - ALM_BONDS
+        - ALM_KRI_2

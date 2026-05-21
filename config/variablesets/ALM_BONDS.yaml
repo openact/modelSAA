@@ -1,0 +1,13 @@
+# Bond portfolio outputs
+# Cash flows, book values, market values and unrealised P&L for the held bond portfolio.
+names:
+  - BOND_CF_COUPON
+  - BOND_CF_REDEMP
+  - BOND_CF_TOTAL
+  - BOND_COUPON_INCOME
+  - BOND_ABV_TOT
+  - BOND_ACCI_TOT
+  - BOND_BV_TOT
+  - BOND_MV_TOT
+  - BOND_UNREALISED_GL
+

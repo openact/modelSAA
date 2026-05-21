@@ -1,0 +1,25 @@
+# NAR – Notional at risk,,,,,,,,,,,,,
+!2,ASSET_CLASS,CLASS,BOND_TYPE,NAR_TOT,NAR_FI,NAR_EQ,NAR_PROP,RET_RATE,SD_RATE,ASSET_HKD_MIX,ASSET_USD_MIX,RC_FAC_EQ,RC_FAC_PROP
+*,AC,Fixed_Income,IG,1,1,0,0,0.03004592,0,0,1,0,0
+*,IG_Tradable,Fixed_Income,IG,1,1,0,0,0.045,0,0,1,0,0
+*,HY,Fixed_Income,HY,1,1,0,0,0.0693,0.09207847,0,1,0,0
+*,Securitized_CMBS,Fixed_Income,IG,1,1,0,0,0.0463,0.06805289,0,1,0,0
+*,DM,Equity,,1,0,1,0,0.0779,0.15640972,0.7,0.3,0.4,0
+*,EM,Equity,,1,0,1,0,0.0967,0.23267838,0,1,0.5,0
+*,PE,Equity,,1,0,1,0,0.1067,0.089,0,1,0.5,0
+*,Loan_Private_Credit,Alternatives,Private_Credit,1.75,1.575,0.175,0,0.0772,0.085,0,1,0.5,0
+*,Property,Alternatives,,1,0,0,1.6,0.0727,0.0603,0,1,0,0.25
+*,Hedging_Fund,Alternatives,,1,0,0,0,0.0610399,0.0541,0,1,0,0
+*,Convertible_Bond,Alternatives,HY,1,0,0,0,0.0565,0.15243766,0,1,0,0
+*,QIS,Alternatives,,1,0,0,0,0.23483076,0.29485808,0,1,0,0
+*,Loan_Private_Credit_New,Alternatives,Private_Credit,1,0,1.75,0,0,0.085,0,1,0.5,0
+*,Dummy_2,Dummy,,1,0,0,0,0,0,0,1,0,0
+*,Dummy_3,Dummy,,1,0,0,0,0,0,0,1,0,0
+*,Dummy_4,Dummy,,1,0,0,0,0,0,0,1,0,0
+*,Dummy_5,Dummy,,1,0,0,0,0,0,0,1,0,0
+*,Dummy_6,Dummy,,1,0,0,0,0,0,0,1,0,0
+*,Dummy_7,Dummy,,1,0,0,0,0,0,0,1,0,0
+*,Cash,Cash,,1,0,0,0,0.033,0,1,0,0,0
+*,Deposit_ST_Govern_Bond,Fixed_Income,,1,0,0,0,0.0349,0,0,1,0,0
+*,Seed_Capital,Fixed_Income,,1,0,0,0,0.03,0,0,1,0,0
+*,Other_Asset,Other_Asset,,1,0,0,0,0.02499936,0,1,0,0,0

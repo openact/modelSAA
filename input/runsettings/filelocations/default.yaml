@@ -1,0 +1,13 @@
+# list of global parameters, switches, etc for a run
+# flags - map[string]string
+# absolute path or relative to inputDir(user specified)
+globals:
+  fileLocations:
+    tableLocations:
+      - tables
+    esdLocations:
+      - esds               # ESD 大表专用目录，不走 LoadTable（避免构建 10M 行 hash map）
+    modelpointLocations:
+      - mpfs
+    gridLocations:
+      - grids              # ArrayGridDef 配置目录（可选），按 run 定义 ArrayGrid schema

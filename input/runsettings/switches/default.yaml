@@ -1,0 +1,4 @@
+# list of global parameters, switches, etc for a run
+# flags - map[string]string
+globals:
+  switches:

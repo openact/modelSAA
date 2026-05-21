@@ -1,0 +1,7 @@
+# modelALM_SAA input config
+inputpaths:
+  runsettingDir: runsettings
+  runsettingFile: runsettings.yaml
+  matrixDir: matrices
+  enumDir: enums
+

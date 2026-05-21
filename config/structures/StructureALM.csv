@@ -1,0 +1,3 @@
+Name,Kind,Factory,Description,PreloadFrom,Priority
+ALM,product,RiskCalc,RiskMeasures,,0
+ALM_TEST,product,RiskCalc,RiskMeasures,,0

@@ -1,0 +1,5 @@
+# 诊断默认配置——所有项默认关闭。
+# 不写入此文件 ≡ enabled=0，无过滤。
+globals:
+  diagnostics:
+

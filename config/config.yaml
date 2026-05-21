@@ -1,0 +1,12 @@
+# modelALM_SAA config
+confpaths:
+  structureDir: structures
+  productDir: products
+  accumulationDir: accumulations
+  variableSetDir: variablesets
+
+outputpaths:
+  logDir: logs
+  logFile: ALM.log
+  resultDir: results
+
