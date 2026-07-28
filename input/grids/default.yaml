@@ -3,7 +3,7 @@
 # 格式：
 #   grids:
 #     <VAR_NAME>:
-#       dimNames: [dim1, dim2, ...]
+#       dims: [dim1, dim2, ...]
 #       retainPrev: true     # 可选；true → Advance 时将 Data swap 到 PrevData（跨步计算用）
 #
 # 说明：
@@ -13,26 +13,26 @@
 #
 grids:
   ZCB_CURVES:
-    dimNames: [economy]
+    dims: [economy]
     retainPrev: true           # snapshot：Advance 跳过；CALC_ZCB_CURVES 在每个 calc step 调用
                                # grid.Snapshot() 管理生命周期。非 calc step 时 Data hold-last（保留上次值）；
                                # PrevData = 上一个 calc step 的 ZCB 曲线，用于跨步 P&L 计算。
 
   SPD_CURVES:
-    dimNames: [economy, spreadband]
+    dims: [economy, spreadband]
 
   RDF_CURVES:
-    dimNames: [economy, spreadband]
+    dims: [economy, spreadband]
 
   ESD:
-    dimNames: [economy, class, measure, term]
+    dims: [economy, class, measure, term]
 
   # ── 债券组合 pool-level 汇总（由 CALC_BOND_PORTFOLIO 写入）──────────────────
   BOND_VAL_PL:                # pool-level 存量指标；slice[BondIdxMV]=MV, slice[BondIdxABV]=ABV
-    dimNames: [pool]
+    dims: [pool]
     retainPrev: true           # snapshot：Advance 跳过；CALC_BOND_PORTFOLIO 在每个 calc step 调用
                                # grid.Snapshot() 管理生命周期。非 calc step 时 Data hold-last（保留上次值）；
                                # PrevData = 上一个 calc step 的 MV/ABV，用于跨步 P&L 计算。
 
   BOND_CF_PL:                 # pool-level 流量指标（stream：Advance 每步清空，非 calc step 时为 0）
-    dimNames: [pool]
+    dims: [pool]

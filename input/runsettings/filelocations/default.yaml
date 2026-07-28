@@ -9,5 +9,5 @@ globals:
       - esds               # ESD 大表专用目录，不走 LoadTable（避免构建 10M 行 hash map）
     modelpointLocations:
       - mpfs
-    gridLocations:
-      - grids              # ArrayGridDef 配置目录（可选），按 run 定义 ArrayGrid schema
+    cubeLocations:
+      - cubes              # Cube schema 配置目录（可选），按 run 定义 VectorCube/ScalarCube schema
