@@ -7,11 +7,6 @@ import (
 )
 
 // Fund Level
-var TEST_STR_VAR = formulae.RegisterScalarTxt(formulae.Registry, "default", "TEST_STR_VAR", func(ctx *formulae.ProjContext, i int, dims ...int) (val string) {
-	val = "Hello, World!"
-	return
-})
-
 var PORT_RETURN_RATE = formulae.RegisterScalarNum(formulae.Registry, "default", "PORT_RETURN_RATE", func(ctx *formulae.ProjContext, i int, dims ...int) (val float64) {
 	val = formulae.SumProduct(ctx, i, ASSET_MIX, ASSET_RETURN_RATE)
 	return

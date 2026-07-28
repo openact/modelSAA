@@ -10,7 +10,7 @@ runs:
     options:
       - default
     diagnostics:
-      - diagnostics
+      - default
     filenames:
       - default
     fileLocations:
@@ -27,7 +27,7 @@ runs:
     options:
       - default
     diagnostics:
-      - diagnostics
+      - default
     filenames:
       - default
     fileLocations:

@@ -265,12 +265,6 @@
 
 ---
 
-## ENUM_TEST_1.csv / ENUM_TEST_2.csv
-
-**用途**：测试用枚举，仅包含 `AC` 和 `IG_Tradable` 两个值，供 `TEST_ARRAY` 和 `TEST_ARRAY_TXT` 变量在开发阶段验证多维向量功能，不参与正式计算。
-
----
-
 # 3. 矩阵（matrices/）
 
 所有矩阵存放于 `input/matrices/`，格式为 `.csv`。
@@ -408,6 +402,8 @@ RC_FAC_USD[i] = Table("Param", col=i, "RC_FAC_USD")
 ```
 RC_FAC_CNY[i] = Table("Param", col=i, "RC_FAC_CNY")
 ```
+
+> 当前 PCR_FX 仅使用 HKD/USD 风险资本因子；CNY 参数已注册但未进入输出变量集。
 
 ---
 
@@ -902,4 +898,3 @@ elif intBitingScen == "INT_DN":
 | `round4(x)` | 四舍五入保留 4 位小数 |
 | `tIdx(sY, sM, cY, cM)` | 起始年月到当前年月的月数：`(cY-sY)*12 + (cM-sM)` |
 | `Idx(dims, k)` | 安全取 dims 第 k 个元素（越界返回 0） |
-

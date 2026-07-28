@@ -46,6 +46,7 @@ modelALM_SAA/
 │       ├── parameters/             # 全局数值参数          ← 调整日期等参数
 │       ├── variablesets/           # 各 run 的输出变量集选择
 │       ├── filelocations/          # 数据文件目录映射
+│       ├── diagnostics/            # 诊断配置（当前默认关闭）
 │       ├── options/                # （预留）
 │       └── switches/               # （预留）
 │
@@ -120,10 +121,10 @@ outputpaths:
 
 | 文件 | 包含变量 | 典型用途 |
 |------|---------|---------|
-| `ALM.yaml` | 全部 58 个变量 | 开发调试、完整输出 |
-| `ALM_KRI.yaml` | `PORT_RETURN_RATE`, `PORT_RISK`, `PCR_TOTAL` | KRI 汇总报告 |
+| `ALM.yaml` | 全部 55 个输出变量 | 开发调试、完整输出 |
+| `ALM_KRI.yaml` | `PORT_RETURN_RATE`, `PORT_RISK` | 组合风险收益指标 |
 | `ALM_KRI_1.yaml` | `PORT_RETURN_RATE`, `PORT_RISK` | 组合风险收益指标 |
-| `ALM_KRI_2.yaml` | `PCR_TOTAL`, `TEST_STR_VAR` | PCR 资本指标 |
+| `ALM_KRI_2.yaml` | `PCR_TOTAL` | PCR 资本指标 |
 
 ---
 
@@ -155,8 +156,14 @@ runs:
       - default                   # 引用 runsettings/variablesets/default.yaml
     parameters:
       - default                   # 引用 runsettings/parameters/default.yaml
+    options:
+      - default                   # 引用 runsettings/options/default.yaml（当前为空）
+    diagnostics:
+      - default                   # 引用 runsettings/diagnostics/default.yaml（默认关闭）
     filenames:
       - default                   # 引用 runsettings/filenames/default.yaml
+    fileLocations:
+      - default                   # 引用 runsettings/filelocations/default.yaml
     seriatimResults: true         # true = 同时输出逐情景明细
 ```
 
@@ -165,7 +172,7 @@ runs:
 | Run | Structure | Simulations | VariableSet | 输出变量 |
 |-----|-----------|-------------|-------------|---------|
 | `RUN_001` | StructureALM | 1~2 | `default` | 全量（ALM）存储，KRI 汇总 |
-| `RUN_002` | StructureALM | 1~2 | `run2` | KRI_1 + KRI_2 存储与汇总 |
+| `RUN_002` | StructureALM | 1 | `run2` | KRI_1 + KRI_2 存储与汇总 |
 
 ## 4.3 input/runsettings/filenames/default.yaml — 表文件映射
 
@@ -190,7 +197,7 @@ globals:
 | 逻辑表名 | 用于变量 | 内容 |
 |---------|---------|------|
 | `Assump` | `ASSET_RETURN_RATE`, `ASSET_SD_RATE`, `NAR_*`, `RC_ASSET_*` 等 | 资产假设 |
-| `Param` | `RC_FAC_HKD`, `RC_FAC_USD`, `RC_FAC_CNY` | 时间步级风险资本因子 |
+| `Param` | `RC_FAC_HKD`, `RC_FAC_USD`, `RC_FAC_CNY` | 时间步级风险资本因子（当前 PCR 使用 HKD/USD） |
 | `SAA_Sims` | `ASSET_MIX` | SAA 权重（按情景） |
 | `RF_Curves` | `RF_ECON_SCENARIO`, `HKD_BOND_MV_CHG`, `USD_BOND_MV_CHG` | 无风险利率曲线 |
 | `AssetTradBondAssump` | `TRAD_BOND_DUR` | 传统债券久期假设 |
@@ -232,7 +239,7 @@ globals:
   variableSets:
     calculatedVariables: [ALM]          # 计算全部变量
     storedVariables:     [ALM]          # 存储全部变量
-    aggregatedVariables: [ALM_KRI]      # 汇总 3 个 KRI
+    aggregatedVariables: [ALM_KRI, ALM_KRI_2] # 汇总 PORT_RETURN_RATE / PORT_RISK / PCR_TOTAL
 ```
 
 **run2.yaml**（RUN_002）：

@@ -2,8 +2,6 @@ Included,Domain,VarName,Priority,VarType,AscOrDesc
 1,default,CALENDAR_MTH,1,formula,Asc
 1,default,CALENDAR_YR,1,formula,Asc
 1,default,CALENDAR_DATE,1,formula,Asc
-1,default,TEST_ARRAY,1,formula,Asc
-1,default,TEST_ARRAY_NEW,1,formula,Asc
 1,default,RC_FAC_HKD,1,formula,Asc
 1,default,RC_FAC_USD,1,formula,Asc
 1,default,RC_FAC_CNY,1,formula,Asc
@@ -57,5 +55,3 @@ Included,Domain,VarName,Priority,VarType,AscOrDesc
 1,default,PCR_INT,1,formula,Asc
 1,default,PCR_MKT_RISK,1,formula,Asc
 1,default,PCR_TOTAL,1,formula,Asc
-1,default,TEST_STR_VAR,1,formula,Asc
-1,default,TEST_ARRAY_TXT,1,formula,Asc

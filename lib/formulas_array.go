@@ -5,40 +5,6 @@ import (
 	"github.com/openact/kit/enum"
 )
 
-var TEST_ARRAY = formulae.RegisterVectorNum(formulae.Registry, "default", "TEST_ARRAY",
-	func(ctx *formulae.ProjContext, i int, coord *enum.Coordinate) (val float64) {
-		seg := coord.DimValue("ENUM_TEST_2")
-		if seg == "Seg_1" {
-			val = 999
-		} else {
-			val = 0
-		}
-		return
-	}, "ENUM_TEST_1", "ENUM_TEST_2")
-
-var TEST_ARRAY_TXT = formulae.RegisterVectorTxt(formulae.Registry, "default", "TEST_ARRAY_TXT",
-	func(ctx *formulae.ProjContext, i int, coord *enum.Coordinate) (val string) {
-		seg := coord.DimValue("ENUM_TEST_2")
-		if seg == "AC" {
-			val = "Hello"
-		} else {
-			val = "World"
-		}
-		return
-	}, "ENUM_TEST_1", "ENUM_TEST_2")
-
-var TEST_ARRAY_NEW = formulae.RegisterVectorNum(formulae.Registry, "default", "TEST_ARRAY_NEW",
-	func(ctx *formulae.ProjContext, i int, coord *enum.Coordinate) (val float64) {
-		class := coord.DimValue("ASSET_CLASS")
-
-		if class == "IG_Tradable" {
-			val = 777
-		} else {
-			val = 0
-		}
-		return
-	}, "ASSET_CLASS")
-
 var ASSET_MIX = formulae.RegisterVectorNum(formulae.Registry, "default", "ASSET_MIX",
 	func(ctx *formulae.ProjContext, i int, coord *enum.Coordinate) (val float64) {
 		sim := ctx.Sim

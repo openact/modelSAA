@@ -3,8 +3,6 @@ names:
   - CALENDAR_MTH
   - CALENDAR_YR
   - CALENDAR_DATE
-  - TEST_ARRAY
-  - TEST_ARRAY_NEW
   - RC_FAC_HKD
   - RC_FAC_USD
   - ASSET_MIX
@@ -57,5 +55,3 @@ names:
   - PCR_INT
   - PCR_MKT_RISK
   - PCR_TOTAL
-  - TEST_STR_VAR
-  - TEST_ARRAY_TXT
