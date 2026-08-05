@@ -14,12 +14,21 @@ var ASSET_MIX = formulae.RegisterVectorNum(formulae.Registry, "default", "ASSET_
 		return
 	}, "ASSET_CLASS")
 
-var TRAD_BOND_DIST = formulae.RegisterVectorNum(formulae.Registry, "default", "TRAD_BOND_DIST",
+var TRAD_BOND_DIST_FOR_INT_PCR = formulae.RegisterVectorNum(formulae.Registry, "default", "TRAD_BOND_DIST_FOR_INT_PCR",
 	func(ctx *formulae.ProjContext, i int, coord *enum.Coordinate) (val float64) {
 		ratingBand := coord.DimValue("ENUM_BOND_RATING")
 		termBand := coord.DimValue("ENUM_BOND_TERM")
 
-		val = ctx.ReadTableNum("AssetTradBondDistByRatingByTerm", "Y", ratingBand, termBand)
+		val = ctx.ReadTableNum("AssetTradBondDistByRatingByTermForIntPCR", "Y", ratingBand, termBand)
+		return
+	}, "ENUM_BOND_RATING", "ENUM_BOND_TERM")
+
+var TRAD_BOND_DIST_FOR_CS_PCR = formulae.RegisterVectorNum(formulae.Registry, "default", "TRAD_BOND_DIST_FOR_CS_PCR",
+	func(ctx *formulae.ProjContext, i int, coord *enum.Coordinate) (val float64) {
+		ratingBand := coord.DimValue("ENUM_BOND_RATING")
+		termBand := coord.DimValue("ENUM_BOND_TERM")
+
+		val = ctx.ReadTableNum("AssetTradBondDistByRatingByTermForCsPCR", "Y", ratingBand, termBand)
 		return
 	}, "ENUM_BOND_RATING", "ENUM_BOND_TERM")
 
@@ -48,11 +57,11 @@ var ALT_BOND_DUR = formulae.RegisterVectorNum(formulae.Registry, "default", "ALT
 		return
 	}, "ENUM_BOND_TERM")
 
-var TRAD_BOND_MIX_BY_TERM = formulae.RegisterVectorNum(formulae.Registry, "default", "TRAD_BOND_MIX_BY_TERM",
+var TRAD_BOND_MIX_BY_TERM_FOR_INT_PCR = formulae.RegisterVectorNum(formulae.Registry, "default", "TRAD_BOND_MIX_BY_TERM_FOR_INT_PCR",
 	func(ctx *formulae.ProjContext, i int, coord *enum.Coordinate) (val float64) {
 		termBand := coord.DimValue("ENUM_BOND_TERM")
 
-		val = formulae.ArraySumIf(ctx, i, TRAD_BOND_DIST, "ENUM_BOND_TERM", termBand)
+		val = formulae.ArraySumIf(ctx, i, TRAD_BOND_DIST_FOR_INT_PCR, "ENUM_BOND_TERM", termBand)
 
 		return
 	}, "ENUM_BOND_TERM")
@@ -103,6 +112,14 @@ var ASSET_USD_MIX = formulae.RegisterVectorNum(formulae.Registry, "default", "AS
 		class := coord.DimValue("ASSET_CLASS")
 
 		val = ctx.ReadTableNum("Assump", "Y", class, "ASSET_USD_MIX")
+		return
+	}, "ASSET_CLASS")
+
+var ASSET_MSCI_MIX = formulae.RegisterVectorNum(formulae.Registry, "default", "ASSET_MSCI_MIX",
+	func(ctx *formulae.ProjContext, i int, coord *enum.Coordinate) (val float64) {
+		class := coord.DimValue("ASSET_CLASS")
+
+		val = ctx.ReadTableNum("Assump", "Y", class, "ASSET_MSCI_MIX")
 		return
 	}, "ASSET_CLASS")
 
@@ -193,11 +210,18 @@ var NAR_TOT_USD = formulae.RegisterVectorNum(formulae.Registry, "default", "NAR_
 		return
 	}, "ASSET_CLASS")
 
+var NAR_TOT_MSCI = formulae.RegisterVectorNum(formulae.Registry, "default", "NAR_TOT_MSCI",
+	func(ctx *formulae.ProjContext, i int, coord *enum.Coordinate) (val float64) {
+		rs := ctx.ResultsStore
+		val = rs.GetArrayNum("NAR_TOT", coord, i) * rs.GetArrayNum("ASSET_MSCI_MIX", coord, i)
+		return
+	}, "ASSET_CLASS")
+
 var PIVOT_RC_SPD_BOND_TRAD = formulae.RegisterVectorNum(formulae.Registry, "default", "PIVOT_RC_SPD_BOND_TRAD",
 	func(ctx *formulae.ProjContext, i int, coord *enum.Coordinate) (val float64) {
 		rs := ctx.ResultsStore
 		spdParams := rs.GetArrayNum("STRESS_BOND_SPD_PARAMS", coord, i)
-		tradBondDist := rs.GetArrayNum("TRAD_BOND_DIST", coord, i)
+		tradBondDist := rs.GetArrayNum("TRAD_BOND_DIST_FOR_CS_PCR", coord, i)
 		bondTrad := rs.GetNum("BOND_TRAD", i)
 
 		val = bondTrad * tradBondDist * spdParams

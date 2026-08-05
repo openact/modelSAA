@@ -121,7 +121,7 @@ outputpaths:
 
 | 文件 | 包含变量 | 典型用途 |
 |------|---------|---------|
-| `ALM.yaml` | 全部 55 个输出变量 | 开发调试、完整输出 |
+| `ALM.yaml` | 全部 63 个输出变量 | 开发调试、完整输出 |
 | `ALM_KRI.yaml` | `PORT_RETURN_RATE`, `PORT_RISK` | 组合风险收益指标 |
 | `ALM_KRI_1.yaml` | `PORT_RETURN_RATE`, `PORT_RISK` | 组合风险收益指标 |
 | `ALM_KRI_2.yaml` | `PCR_TOTAL` | PCR 资本指标 |
@@ -186,7 +186,8 @@ globals:
     AssetAltBondAssump:              AssetAltBondAssump
     AssetAltBondDistByRatingByTerm:  AssetAltBondDistByRatingByTerm
     AssetTradBondAssump:             AssetTradBondAssump
-    AssetTradBondDistByRatingByTerm: AssetTradBondDistByRatingByTerm
+    AssetTradBondDistByRatingByTermForIntPCR: AssetTradBondDistByRatingByTermForIntPCR
+    AssetTradBondDistByRatingByTermForCsPCR: AssetTradBondDistByRatingByTermForCsPCR
     RF_Curves:                       RF_Curves
     SAA_Sims:                        SAA_Sims
     StressBondSpdByRatingByTerm:     StressBondSpdByRatingByTerm
@@ -196,13 +197,14 @@ globals:
 
 | 逻辑表名 | 用于变量 | 内容 |
 |---------|---------|------|
-| `Assump` | `ASSET_RETURN_RATE`, `ASSET_SD_RATE`, `NAR_*`, `RC_ASSET_*` 等 | 资产假设 |
-| `Param` | `RC_FAC_HKD`, `RC_FAC_USD`, `RC_FAC_CNY` | 时间步级风险资本因子（当前 PCR 使用 HKD/USD） |
+| `Assump` | `ASSET_RETURN_RATE`, `ASSET_SD_RATE`, `ASSET_MSCI_MIX`, `NAR_*`, `RC_ASSET_*` 等 | 资产假设 |
+| `Param` | `RC_FAC_HKD`, `RC_FAC_USD`, `RC_FAC_CNY`, `RC_FAC_MSCI` | 时间步级风险资本因子 |
 | `SAA_Sims` | `ASSET_MIX` | SAA 权重（按情景） |
 | `RF_Curves` | `RF_ECON_SCENARIO`, `HKD_BOND_MV_CHG`, `USD_BOND_MV_CHG` | 无风险利率曲线 |
 | `AssetTradBondAssump` | `TRAD_BOND_DUR` | 传统债券久期假设 |
 | `AssetAltBondAssump` | `ALT_BOND_DUR` | 另类债券久期假设 |
-| `AssetTradBondDistByRatingByTerm` | `TRAD_BOND_DIST` | 传统债券评级期限分布 |
+| `AssetTradBondDistByRatingByTermForIntPCR` | `TRAD_BOND_DIST_FOR_INT_PCR` | 传统债券评级期限分布（利率 PCR） |
+| `AssetTradBondDistByRatingByTermForCsPCR` | `TRAD_BOND_DIST_FOR_CS_PCR` | 传统债券评级期限分布（信用利差 PCR） |
 | `AssetAltBondDistByRatingByTerm` | `ALT_BOND_DIST` | 另类债券评级期限分布 |
 | `StressBondSpdByRatingByTerm` | `STRESS_BOND_SPD_PARAMS` | 利差压力参数 |
 
@@ -272,6 +274,10 @@ globals:
 | `LIAB_DUR_PCR` | `num` | 负债 PCR 久期（用于 `INT_RISK_SCAL`） |
 | `LIAB_DUR_RW` | `num` | 负债 RW 久期（预留） |
 | `LIAB_COST_PC` | `num` | 负债成本率（预留） |
+| `LAC_EQ_FAC` | `num` | 权益 LAC 因子 |
+| `LAC_EQ_AMT` | `num` | 权益 LAC 金额 |
+| `LAC_CS_FAC` | `num` | 信用利差 LAC 因子 |
+| `LAC_CS_AMT` | `num` | 信用利差 LAC 金额 |
 | `INT_BITING` | `txt` | 利率 biting 方向：`INT_UP` 或 `INT_DN` |
 
 ## 5.2 当前文件

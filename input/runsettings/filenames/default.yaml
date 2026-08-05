@@ -6,7 +6,8 @@ globals:
     AssetAltBondAssump: AssetAltBondAssump
     AssetAltBondDistByRatingByTerm: AssetAltBondDistByRatingByTerm
     AssetTradBondAssump: AssetTradBondAssump
-    AssetTradBondDistByRatingByTerm: AssetTradBondDistByRatingByTerm
+    AssetTradBondDistByRatingByTermForIntPCR: AssetTradBondDistByRatingByTermForIntPCR
+    AssetTradBondDistByRatingByTermForCsPCR: AssetTradBondDistByRatingByTermForCsPCR
     RF_Curves: RF_Curves
     SAA_Sims: SAA_Sims
     StressBondSpdByRatingByTerm: StressBondSpdByRatingByTerm

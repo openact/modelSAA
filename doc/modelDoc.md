@@ -42,6 +42,7 @@
 | `SD_RATE` | 年化标准差（波动率） |
 | `ASSET_HKD_MIX` | 港币敞口比例（用于 FX 风险资本计算） |
 | `ASSET_USD_MIX` | 美元敞口比例 |
+| `ASSET_MSCI_MIX` | MSCI 敞口比例 |
 | `RC_FAC_EQ` | 权益资产风险资本因子 |
 | `RC_FAC_PROP` | 房地产资产风险资本因子 |
 
@@ -59,6 +60,7 @@
 | `RC_FAC_HKD` | 港币 FX 风险资本因子（时间步级） |
 | `RC_FAC_USD` | 美元 FX 风险资本因子 |
 | `RC_FAC_CNY` | 人民币 FX 风险资本因子 |
+| `RC_FAC_MSCI` | MSCI FX 风险资本因子 |
 
 > 当前包含 `FUND01` / `FUND02` 两条产品记录。
 
@@ -103,9 +105,9 @@
 
 ---
 
-## AssetTradBondDistByRatingByTerm.fac
+## AssetTradBondDistByRatingByTermForIntPCR.fac
 
-**用途**：传统债券按信用评级和期限段的持仓分布矩阵，用于 `TRAD_BOND_DIST`。
+**用途**：传统债券按信用评级和期限段的持仓分布矩阵，用于 `TRAD_BOND_DIST_FOR_INT_PCR`。
 **键列**：`BOND_RATING`（行键），期限段作为列（`TERM_5` … `TERM_100`）
 
 | 评级行 | 说明 |
@@ -119,12 +121,22 @@
 
 ---
 
+## AssetTradBondDistByRatingByTermForCsPCR.fac
+
+**用途**：传统债券按信用评级和期限段的持仓分布矩阵，用于 `TRAD_BOND_DIST_FOR_CS_PCR`。
+
+**键列**：`BOND_RATING`（行键），期限段作为列（`TERM_5` … `TERM_100`）
+
+每格值 = 该评级期限组合占传统债券总 NAR 的比例；与 `ForIntPCR` 版本当前保持相同数据，供信用利差 PCR 使用。
+
+---
+
 ## AssetAltBondDistByRatingByTerm.fac
 
 **用途**：另类债券按评级和期限的持仓分布矩阵，用于 `ALT_BOND_DIST`。
 **键列**：`BOND_RATING`（行键）
 
-结构与 `AssetTradBondDistByRatingByTerm.fac` 一致。当前另类债券全部归入 `NON_RATED` × `TERM_5`（值 = 1.0），反映私人信贷无外部评级、短期限特征。
+结构与 `AssetTradBondDistByRatingByTermForIntPCR.fac` 一致。当前另类债券全部归入 `NON_RATED` × `TERM_5`（值 = 1.0），反映私人信贷无外部评级、短期限特征。
 
 ---
 
@@ -200,7 +212,7 @@
 
 ## ENUM_BOND_RATING.csv
 
-**用途**：债券信用评级枚举，作为 `TRAD_BOND_DIST`、`ALT_BOND_DIST`、`STRESS_BOND_SPD_PARAMS`、`PIVOT_RC_SPD_BOND_*` 等向量变量的评级维度。
+**用途**：债券信用评级枚举，作为 `TRAD_BOND_DIST_FOR_INT_PCR`、`TRAD_BOND_DIST_FOR_CS_PCR`、`ALT_BOND_DIST`、`STRESS_BOND_SPD_PARAMS`、`PIVOT_RC_SPD_BOND_*` 等向量变量的评级维度。
 
 | KEY | VALUE | 说明 |
 |-----|-------|------|
@@ -213,7 +225,7 @@
 
 ## ENUM_BOND_TERM.csv
 
-**用途**：债券期限段枚举，作为 `TRAD_BOND_DUR`、`ALT_BOND_DUR`、`TRAD_BOND_DIST`、`ALT_BOND_DIST` 等向量变量的期限维度。与 `AssetTradBondAssump.fac` / `AssetAltBondAssump.fac` 及 `*DistByRatingByTerm.fac` 的列结构一一对应。
+**用途**：债券期限段枚举，作为 `TRAD_BOND_DUR`、`ALT_BOND_DUR`、`TRAD_BOND_DIST_FOR_INT_PCR`、`TRAD_BOND_DIST_FOR_CS_PCR`、`ALT_BOND_DIST` 等向量变量的期限维度。与 `AssetTradBondAssump.fac` / `AssetAltBondAssump.fac` 及 `*DistByRatingByTerm*.fac` 的列结构一一对应。
 
 | KEY | VALUE | 说明 |
 |-----|-------|------|
@@ -381,7 +393,23 @@ CALENDAR_DATE[i] = CALENDAR_YR[i] * 100 + CALENDAR_MTH[i]
 
 ---
 
-## 4. RC_FAC_HKD　`Scalar :: Num`　`Param`
+## 4. LIAB_TO_ASSET_RATIO　`Scalar :: Num`
+
+```
+LIAB_TO_ASSET_RATIO[i] = TOT_LIAB / TOT_ASSET
+```
+
+---
+
+## 5. ASSET_TO_LIAB_RATIO　`Scalar :: Num`
+
+```
+ASSET_TO_LIAB_RATIO[i] = TOT_ASSET / TOT_LIAB
+```
+
+---
+
+## 6. RC_FAC_HKD　`Scalar :: Num`　`Param`
 
 ```
 RC_FAC_HKD[i] = Table("Param", col=i, "RC_FAC_HKD")
@@ -389,7 +417,7 @@ RC_FAC_HKD[i] = Table("Param", col=i, "RC_FAC_HKD")
 
 ---
 
-## 5. RC_FAC_USD　`Scalar :: Num`　`Param`
+## 7. RC_FAC_USD　`Scalar :: Num`　`Param`
 
 ```
 RC_FAC_USD[i] = Table("Param", col=i, "RC_FAC_USD")
@@ -397,13 +425,13 @@ RC_FAC_USD[i] = Table("Param", col=i, "RC_FAC_USD")
 
 ---
 
-## 6. RC_FAC_CNY　`Scalar :: Num`　`Param`
+## 8. RC_FAC_CNY　`Scalar :: Num`　`Param`
 
 ```
 RC_FAC_CNY[i] = Table("Param", col=i, "RC_FAC_CNY")
 ```
 
-> 当前 PCR_FX 仅使用 HKD/USD 风险资本因子；CNY 参数已注册但未进入输出变量集。
+> 当前 PCR_FX 使用 HKD/USD/MSCI 风险资本因子；CNY 已注册但未进入输出变量集。
 
 ---
 
@@ -418,12 +446,14 @@ for each class:
 
 ---
 
-## 8. TRAD_BOND_DIST　`Array[ENUM_BOND_RATING, ENUM_BOND_TERM] :: Num`
+## 8. TRAD_BOND_DIST_FOR_INT_PCR / TRAD_BOND_DIST_FOR_CS_PCR　`Array[ENUM_BOND_RATING, ENUM_BOND_TERM] :: Num`
 
 ```
 for each (rating, term):
-    TRAD_BOND_DIST[i, rating, term] =
-        Table("AssetTradBondDistByRatingByTerm", col="Y", rating, term)
+    TRAD_BOND_DIST_FOR_INT_PCR[i, rating, term] =
+        Table("AssetTradBondDistByRatingByTermForIntPCR", col="Y", rating, term)
+    TRAD_BOND_DIST_FOR_CS_PCR[i, rating, term] =
+        Table("AssetTradBondDistByRatingByTermForCsPCR", col="Y", rating, term)
 ```
 
 ---
@@ -456,11 +486,11 @@ for each term:
 
 ---
 
-## 12. TRAD_BOND_MIX_BY_TERM　`Array[ENUM_BOND_TERM] :: Num`
+## 12. TRAD_BOND_MIX_BY_TERM_FOR_INT_PCR　`Array[ENUM_BOND_TERM] :: Num`
 
 ```
 for each term:
-    TRAD_BOND_MIX_BY_TERM[i, term] = Σ TRAD_BOND_DIST[i, *, term]
+    TRAD_BOND_MIX_BY_TERM_FOR_INT_PCR[i, term] = Σ TRAD_BOND_DIST_FOR_INT_PCR[i, *, term]
                                        (sum over all ENUM_BOND_RATING)
 ```
 
@@ -554,7 +584,7 @@ BOND_ALT[i] = Σ NAR_FI[i, class]
 ```
 for each (rating, term):
     PIVOT_RC_SPD_BOND_TRAD[i, rating, term] =
-        BOND_TRAD[i] * TRAD_BOND_DIST[i, rating, term] * STRESS_BOND_SPD_PARAMS[i, rating, term]
+        BOND_TRAD[i] * TRAD_BOND_DIST_FOR_CS_PCR[i, rating, term] * STRESS_BOND_SPD_PARAMS[i, rating, term]
 ```
 
 ---
@@ -594,7 +624,7 @@ for each class:
 if BOND_TRAD[i] + BOND_ALT[i] == 0:
     BOND_DUR[i] = 0
 else:
-    durBondTrad = Σ TRAD_BOND_MIX_BY_TERM[i, t] * TRAD_BOND_DUR[i, t]   (SumProduct over term)
+    durBondTrad = Σ TRAD_BOND_MIX_BY_TERM_FOR_INT_PCR[i, t] * TRAD_BOND_DUR[i, t]   (SumProduct over term)
     durBondAlt  = Σ ALT_BOND_MIX_BY_TERM[i, t]  * ALT_BOND_DUR[i, t]    (SumProduct over term)
     BOND_DUR[i] = (BOND_TRAD[i] * durBondTrad + BOND_ALT[i] * durBondAlt)
                   / (BOND_TRAD[i] + BOND_ALT[i])
@@ -674,7 +704,16 @@ for each class:
 
 ---
 
-## 35. NAR_TOT_HKD　`Array[ASSET_CLASS] :: Num`
+## 35. ASSET_MSCI_MIX　`Array[ASSET_CLASS] :: Num`
+
+```
+for each class:
+    ASSET_MSCI_MIX[i, class] = Table("Assump", "Y", class, "ASSET_MSCI_MIX")
+```
+
+---
+
+## 36. NAR_TOT_HKD　`Array[ASSET_CLASS] :: Num`
 
 ```
 for each class:
@@ -683,7 +722,7 @@ for each class:
 
 ---
 
-## 36. NAR_TOT_USD　`Array[ASSET_CLASS] :: Num`
+## 37. NAR_TOT_USD　`Array[ASSET_CLASS] :: Num`
 
 ```
 for each class:
@@ -692,7 +731,16 @@ for each class:
 
 ---
 
-## 37. NAR_FI_HKD　`Array[ASSET_CLASS] :: Num`
+## 38. NAR_TOT_MSCI　`Array[ASSET_CLASS] :: Num`
+
+```
+for each class:
+    NAR_TOT_MSCI[i, class] = NAR_TOT[i, class] * ASSET_MSCI_MIX[i, class]
+```
+
+---
+
+## 39. NAR_FI_HKD　`Array[ASSET_CLASS] :: Num`
 
 ```
 for each class:
@@ -701,7 +749,7 @@ for each class:
 
 ---
 
-## 38. NAR_FI_USD　`Array[ASSET_CLASS] :: Num`
+## 40. NAR_FI_USD　`Array[ASSET_CLASS] :: Num`
 
 ```
 for each class:
@@ -710,7 +758,7 @@ for each class:
 
 ---
 
-## 39. SUM_NAR_FI_HKD　`Scalar :: Num`
+## 41. SUM_NAR_FI_HKD　`Scalar :: Num`
 
 ```
 SUM_NAR_FI_HKD[i] = Σ NAR_FI_HKD[i, class]   (sum over ASSET_CLASS)
@@ -718,7 +766,7 @@ SUM_NAR_FI_HKD[i] = Σ NAR_FI_HKD[i, class]   (sum over ASSET_CLASS)
 
 ---
 
-## 40. SUM_NAR_FI_USD　`Scalar :: Num`
+## 42. SUM_NAR_FI_USD　`Scalar :: Num`
 
 ```
 SUM_NAR_FI_USD[i] = Σ NAR_FI_USD[i, class]   (sum over ASSET_CLASS)
@@ -726,7 +774,7 @@ SUM_NAR_FI_USD[i] = Σ NAR_FI_USD[i, class]   (sum over ASSET_CLASS)
 
 ---
 
-## 41. HKD_BOND_MV_CHG　`Scalar :: Num`
+## 43. HKD_BOND_MV_CHG　`Scalar :: Num`
 
 ```
 intBitingScen = mp.INT_BITING
@@ -741,7 +789,7 @@ HKD_BOND_MV_CHG[i] =
 
 ---
 
-## 42. USD_BOND_MV_CHG　`Scalar :: Num`
+## 44. USD_BOND_MV_CHG　`Scalar :: Num`
 
 ```
 intBitingScen = mp.INT_BITING
@@ -756,7 +804,7 @@ USD_BOND_MV_CHG[i] =
 
 ---
 
-## 43. PORT_BOND_MV　`Scalar :: Num`
+## 45. PORT_BOND_MV　`Scalar :: Num`
 
 ```
 PORT_BOND_MV[i] = SUM_NAR_FI_HKD[i] + SUM_NAR_FI_USD[i]
@@ -764,7 +812,7 @@ PORT_BOND_MV[i] = SUM_NAR_FI_HKD[i] + SUM_NAR_FI_USD[i]
 
 ---
 
-## 44. INT_RISK_SCAL　`Scalar :: Num`
+## 46. INT_RISK_SCAL　`Scalar :: Num`
 
 ```
 if PORT_BOND_MV[i] == 0 or BOND_DUR[i] == 0:
@@ -776,7 +824,7 @@ else:
 
 ---
 
-## 45. PORT_BOND_MV_CHG　`Scalar :: Num`
+## 47. PORT_BOND_MV_CHG　`Scalar :: Num`
 
 ```
 PORT_BOND_MV_CHG[i] = HKD_BOND_MV_CHG[i] + USD_BOND_MV_CHG[i]
@@ -784,7 +832,7 @@ PORT_BOND_MV_CHG[i] = HKD_BOND_MV_CHG[i] + USD_BOND_MV_CHG[i]
 
 ---
 
-## 46. PORT_NAR_HKD　`Scalar :: Num`
+## 48. PORT_NAR_HKD　`Scalar :: Num`
 
 ```
 PORT_NAR_HKD[i] = Σ NAR_TOT_HKD[i, class]   (sum over ASSET_CLASS)
@@ -792,7 +840,7 @@ PORT_NAR_HKD[i] = Σ NAR_TOT_HKD[i, class]   (sum over ASSET_CLASS)
 
 ---
 
-## 47. PORT_NAR_USD　`Scalar :: Num`
+## 49. PORT_NAR_USD　`Scalar :: Num`
 
 ```
 PORT_NAR_USD[i] = Σ NAR_TOT_USD[i, class]   (sum over ASSET_CLASS)
@@ -800,7 +848,15 @@ PORT_NAR_USD[i] = Σ NAR_TOT_USD[i, class]   (sum over ASSET_CLASS)
 
 ---
 
-## 48. PORT_RETURN_RATE　`Scalar :: Num`
+## 50. PORT_NAR_MSCI　`Scalar :: Num`
+
+```
+PORT_NAR_MSCI[i] = Σ NAR_TOT_MSCI[i, class]   (sum over ASSET_CLASS)
+```
+
+---
+
+## 51. PORT_RETURN_RATE　`Scalar :: Num`
 
 ```
 PORT_RETURN_RATE[i] = Σ ASSET_MIX[i, class] * ASSET_RETURN_RATE[i, class]
@@ -809,7 +865,7 @@ PORT_RETURN_RATE[i] = Σ ASSET_MIX[i, class] * ASSET_RETURN_RATE[i, class]
 
 ---
 
-## 49. PORT_RISK　`Scalar :: Num`
+## 52. PORT_RISK　`Scalar :: Num`
 
 ```
 PORT_RISK[i] = sqrt( ASSET_MIX[i]ᵀ × CorrMatrix("ASSET_CORR_MATRIX") × ASSET_MIX[i] )
@@ -818,24 +874,26 @@ PORT_RISK[i] = sqrt( ASSET_MIX[i]ᵀ × CorrMatrix("ASSET_CORR_MATRIX") × ASSET
 
 ---
 
-## 50. PCR_FX　`Scalar :: Num`
+## 53. PCR_FX　`Scalar :: Num`
 
 ```
 PCR_FX[i] = PORT_NAR_HKD[i] * RC_FAC_HKD[i]
            + PORT_NAR_USD[i] * RC_FAC_USD[i]
+           + PORT_NAR_MSCI[i] * RC_FAC_MSCI[i]
 ```
 
 ---
 
-## 51. PCR_EQ　`Scalar :: Num`
+## 54. PCR_EQ　`Scalar :: Num`
 
 ```
-PCR_EQ[i] = Σ RC_ASSET_EQ[i, class]   (sum over ASSET_CLASS)
+base = Σ RC_ASSET_EQ[i, class]   (sum over ASSET_CLASS)
+PCR_EQ[i] = base * (1 - LAC_EQ_FAC) + LAC_EQ_AMT
 ```
 
 ---
 
-## 52. PCR_PROP　`Scalar :: Num`
+## 55. PCR_PROP　`Scalar :: Num`
 
 ```
 PCR_PROP[i] = Σ RC_ASSET_PROP[i, class]   (sum over ASSET_CLASS)
@@ -843,16 +901,16 @@ PCR_PROP[i] = Σ RC_ASSET_PROP[i, class]   (sum over ASSET_CLASS)
 
 ---
 
-## 53. PCR_SPD　`Scalar :: Num`
+## 56. PCR_SPD　`Scalar :: Num`
 
 ```
-PCR_SPD[i] = -Σ PIVOT_RC_SPD_BOND[i, rating, term]
-               (sum over ENUM_BOND_RATING × ENUM_BOND_TERM)
+base = -Σ PIVOT_RC_SPD_BOND[i, rating, term]
+PCR_SPD[i] = base * (1 - LAC_CS_FAC) + LAC_CS_AMT
 ```
 
 ---
 
-## 54. PCR_INT　`Scalar :: Num`
+## 57. PCR_INT　`Scalar :: Num`
 
 ```
 PCR_INT[i] = PORT_BOND_MV_CHG[i] * INT_RISK_SCAL[i]
@@ -860,7 +918,7 @@ PCR_INT[i] = PORT_BOND_MV_CHG[i] * INT_RISK_SCAL[i]
 
 ---
 
-## 55. PCR_MKT_RISK　`Array[ENUM_MKT_RISK] :: Num`
+## 58. PCR_MKT_RISK　`Array[ENUM_MKT_RISK] :: Num`
 
 ```
 for each mktRisk:
@@ -875,7 +933,7 @@ for each mktRisk:
 
 ---
 
-## 56. PCR_TOTAL　`Scalar :: Num`
+## 59. PCR_TOTAL　`Scalar :: Num`
 
 ```
 intBitingScen = mp.INT_BITING
