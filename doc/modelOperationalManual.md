@@ -298,13 +298,22 @@ globals:
 └── <RUN_NAME>/
     ├── .log/
     │   └── ALM.log        # 结构化日志（debug 级别）
-    ├── <逐情景结果文件>    # seriatimResults = true 时生成
-    └── <统计汇总文件>      # aggregatedVariables 对应的跨情景聚合
+    ├── SP_CODE\<component>.fac
+    ├── SP_CODE\metadata\metadata.yaml
+    ├── ACCUM\<component>.fac
+    ├── ACCUM\metadata\metadata.yaml
+    ├── stats\average\SP_CODE\<component>.fac
+    ├── stats\average\SP_CODE\metadata\metadata.yaml
+    ├── stats\min\SP_CODE\...       # 同上，SIM_ID=0
+    ├── stats\max\SP_CODE\...       # 同上，SIM_ID=0
+    └── seriatim/          # seriatimResults = true 时生成 FAC
 ```
 
 ## 6.2 seriatimResults
 
-`seriatimResults: true` 时，输出每个 simulation × 每个时间步的明细值，变量范围由 `storedVariables` 决定。设为 `false` 可减少 I/O，仅保留统计汇总。
+`seriatimResults: true` 时，额外输出每个 simulation × 每个模型点的 FAC，显式 MP 文件名不变，行键为 SIM_ID、NAME、MP_ID、PLAN_CODE、SP_CODE、VAR_NAME，变量范围由 `storedVariables` 决定，时点由 `outputStep` 决定。设为 `false` 跳过逐 MP 文件，仍保留 SP_CODE、ACCUM 和 stats。各视图文本另存 `<component>_text.fac`。SP_CODE/统计行键保留 SP_CODE，ACCUM 目录使用 ACCUM，空 ACCUM 报错；输出失败通过 `RunProjection` 返回入口并非零退出。
+
+每个叶视图目录的 `metadata\metadata.yaml` 仅列本视图数值 products，共享 generation；主视图 `formulae.view` 和 `formulae.field` 同为 SP_CODE 或 ACCUM，ACCUM 使用 accum，不冒充 spCode。统计 view 为小写 average/min/max、field 为 SP_CODE，SIM_ID=0。目录由引擎共享字段描述符生成，不依赖 accumulation 文件。重跑在写入前使新叶 catalog 及旧根目录、bySP、byTag、stats\average|min|max catalog 失效，全部输出成功后才发布，发布失败回滚新 catalog；保留历史 FAC。空视图发布 `products: []`。resReader 的 `-source-dir` 指向 `SP_CODE` 或 `stats\<stat>\SP_CODE` 叶目录，从 metadata 识别 view/field，无 `-view`；显式指定 extraction ID/name，可提供变量语义，仅引用 FAC，不复制数值，不支持 ACCUM、旧版 catalog 或空视图。下游精确校验源 generation/view/field，重跑后须重新导入，勿在发布时导入。
 
 ---
 

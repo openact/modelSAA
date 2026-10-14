@@ -106,45 +106,11 @@ func main() {
 			os.Exit(1)
 		}
 
-		// Create channels for simulation results
-		resChan := make(chan formulae.ComponentResult, 100)
-		stochChan := make(chan formulae.ComponentResult, 100)
-		statsChan := make(chan formulae.ComponentResult, 100)
-
-		// Create completion signals
-		stochDone := make(chan struct{})
-		statsDone := make(chan struct{})
-
-		// Start goroutines to process results
-		go func() {
-			formulae.StochResults(s, stochChan)
-			close(stochDone)
-		}()
-
-		go func() {
-			formulae.StatsResults(s, statsChan)
-			close(statsDone)
-		}()
-
-		// Forward simulation results to both processing channels
-		go func() {
-			for result := range resChan {
-				stochChan <- result
-				statsChan <- result
-			}
-
-			// Close downstream channels when simulation is complete
-			close(stochChan)
-			close(statsChan)
-		}()
-
-		// Run simulations
-		formulae.RunSimulationsConcurrently(ctx, s, structure, resChan, s.Simulations)
-		close(resChan)
-
-		// Wait for both result processors to complete
-		<-stochDone
-		<-statsDone
+		if err := formulae.RunProjection(ctx, s, structure); err != nil {
+			formulae.WithContext(ctx).Error("Projection or output failed",
+				zap.String("setting", s.Name), zap.Error(err))
+			os.Exit(1)
+		}
 
 		// ✅ 修改点 5：使用 WithContext 记录完成信息
 		formulae.WithContext(ctx).Info("All results processing completed for setting",

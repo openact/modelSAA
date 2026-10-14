@@ -3,7 +3,6 @@ module github.com/openact/modelSAA
 go 1.26.2
 
 require (
-	github.com/openact/fin v0.0.1
 	github.com/openact/formulae v0.0.1
 	github.com/openact/kit v0.1.0
 	go.uber.org/zap v1.27.1
