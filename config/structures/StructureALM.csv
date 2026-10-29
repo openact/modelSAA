@@ -1,2 +1,2 @@
-Name,Kind,Factory,Description,PreloadFrom,Priority
-ALM,product,RiskCalc,RiskMeasures,,0
+Name,Kind,Factory,Description,PreloadFrom,PreloadField,Priority
+ALM,product,RiskCalc,RiskMeasures,,,0

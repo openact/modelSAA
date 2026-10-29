@@ -1,6 +1,24 @@
-# modelALM_SAA — 模型文档
+# modelSAA — 模型文档
 
 > 本文档整合了输入表、枚举、矩阵及变量伪代码的完整参考，供开发与审阅使用。
+
+---
+
+## 引擎适配与汇总层级
+
+当前结构仅包含 `ALM` 产品（`RiskCalc`），没有 preload 或 accumulation 组件。
+每个情景独立运行所有模型点，`ASSET_MIX` 使用情景编号读取 `SAA_Sims`，
+`RC_FAC_*` 使用模型点 `PLAN_CODE` 读取 `Param`；本次适配不修改这些输入键和财务公式。
+
+默认 `groupBy: [SP_CODE, ACCUM]`，分别生成两个独立的产品视图，
+不是交叉分组。`ACCUM` 是 MP 的普通业务字段，不再是引擎保留字段。
+`aggregatedVariables` 选择 `PORT_RETURN_RATE`、`PORT_RISK`、`PCR_TOTAL`，
+引擎按模型点直接加总；不会自动对收益率/风险率加权或重新计算。
+`statistics` 显式选择 `ALM/SP_CODE`，逐时点计算四个情景的 average/min/max。
+
+全量标量及向量变量仍在逐模型点结果中导出。普通分组结果与 average 位于
+run 根目录，min/max 位于 `stats`，共用 run 级 catalog/completion；
+统计结果没有 SIM_ID。配置和完整目录示例见 `modelOperationalManual.md`。
 
 ---
 
@@ -71,7 +89,7 @@
 **用途**：按模拟情景编号给出战略资产配置（SAA）权重，用于 `ASSET_MIX`。
 **键列**：`SIMULATION`（1 个键）
 
-每列对应一个 `ASSET_CLASS`，值为该情景下的资产配置权重（合计应为 1）。当前包含情景 1 和 2。
+每列对应一个 `ASSET_CLASS`，值为该情景下的资产配置权重（合计应为 1）。当前配置运行情景 1～4。
 
 > 被 `ASSET_MIX[i, class] = Table("SAA_Sims", "Y", sim, class)` 按模拟编号逐行读取。
 

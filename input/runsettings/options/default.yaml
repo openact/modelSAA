@@ -1,5 +1,8 @@
-# list of global parameters, switches, etc for a run
-# flags - map[string]string
+# modelSAA grouping and output options
 globals:
   options:
     outputStep: "true"
+    groupBy: [SP_CODE, ACCUM]
+    statistics:
+      - component: ALM
+        views: [SP_CODE]

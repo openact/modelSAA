@@ -36,14 +36,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	// GetNum executable info (for logging)
+	// Get executable info (for logging)
 	exePath, exeDir, err := fs.GetExecutableInfo()
 	if err != nil {
 		fmt.Printf("Error: Failed to get executable info: %v\n", err)
 		os.Exit(1)
 	}
 
-	log.Printf("=== ExcelOperator Started ===")
+	log.Printf("=== modelSAA Started ===")
 	log.Printf("Executable path: %s", exePath)
 	log.Printf("Executable directory: %s", exeDir)
 	log.Printf("Working directory: %s", paths.WorkDir)
@@ -51,7 +51,6 @@ func main() {
 	log.Printf("input directory: %s", paths.InputDir)
 	log.Printf("output directory: %s", paths.OutputDir)
 
-	// Existing code
 	start := time.Now()
 
 	// Build run settings（内部处理所有路径加载）
@@ -70,7 +69,6 @@ func main() {
 			os.Exit(1)
 		}
 
-		// ✅ 修改点 1：创建独立的 logger（不是全局 logger）
 		logPath := filepath.Join(logdir, s.OutputPaths.LogFile)
 
 		settingLogger, err := formulae.NewSettingLogger("debug", true, logPath)
@@ -78,19 +76,16 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Failed to initialize logger: %v\n", err)
 			os.Exit(1)
 		}
-		defer settingLogger.Close() // ✅ 确保关闭文件句柄
+		defer settingLogger.Close()
 
-		// ✅ 修改点 2：创建 context 并注入 logger
 		ctx := &formulae.ProjContext{
 			Setting: s,
 		}
 		ctx.SetLogger(settingLogger.Logger())
 
-		// ✅ 修改点 3：使用 WithContext 记录日志
 		formulae.WithContext(ctx).Info("=== START SETTING ===",
 			zap.String("setting", s.Name))
 
-		// ===== 以下保持原有逻辑不变 =====
 		assemblySpec := filepath.Join(s.ConfPaths.StructureDir, s.Structure+".csv")
 		structure, err := formulae.NewStructure(
 			assemblySpec,
@@ -99,7 +94,7 @@ func main() {
 			s.ConfPaths.AccumulationDir,
 		)
 		if err != nil {
-			// ✅ 修改点 4：使用 WithContext 记录错误
+			fmt.Fprintf(os.Stderr, "Failed to create structure for %s: %v\n", s.Name, err)
 			formulae.WithContext(ctx).Error("Failed to create structure",
 				zap.String("setting", s.Name),
 				zap.Error(err))
@@ -107,12 +102,12 @@ func main() {
 		}
 
 		if err := formulae.RunProjection(ctx, s, structure); err != nil {
+			fmt.Fprintf(os.Stderr, "Projection or output failed for %s: %v\n", s.Name, err)
 			formulae.WithContext(ctx).Error("Projection or output failed",
 				zap.String("setting", s.Name), zap.Error(err))
 			os.Exit(1)
 		}
 
-		// ✅ 修改点 5：使用 WithContext 记录完成信息
 		formulae.WithContext(ctx).Info("All results processing completed for setting",
 			zap.String("setting", s.Name))
 	}

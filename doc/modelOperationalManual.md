@@ -1,6 +1,6 @@
-# modelALM_SAA — 运维手册
+# modelSAA — 运维手册
 
-> 本手册说明如何配置和运行 modelALM_SAA 模型。所有操作仅涉及配置文件与输入数据，无需修改代码。技术细节（变量公式、输入表结构）见 `modelDoc.md`。
+> 本手册说明如何配置和运行 modelSAA 模型。所有操作仅涉及配置文件与输入数据，无需修改代码。技术细节（变量公式、输入表结构）见 `modelDoc.md`。
 
 ---
 
@@ -19,7 +19,7 @@
 # 1. 目录结构总览
 
 ```
-modelALM_SAA/
+modelSAA/
 ├── main.go                         # 入口（只读，无需修改）
 │
 ├── config/                         # 模型级静态配置（不随 run 变化）
@@ -47,7 +47,7 @@ modelALM_SAA/
 │       ├── variablesets/           # 各 run 的输出变量集选择
 │       ├── filelocations/          # 数据文件目录映射
 │       ├── diagnostics/            # 诊断配置（当前默认关闭）
-│       ├── options/                # （预留）
+│       ├── options/                # 分组、跨情景统计与输出时点
 │       └── switches/               # （预留）
 │
 └── doc/
@@ -75,12 +75,12 @@ modelALM_SAA/
 
 **典型调用**：
 
-```bash
+```powershell
 # 使用默认路径（config/ input/ output/ 均在 exe 同目录下）
-./modelALM_SAA.exe
+.\modelSAA.exe
 
 # 指定自定义路径
-./modelALM_SAA.exe -config-dir ./config -input-dir ./input -output-dir ./results
+.\modelSAA.exe -config-dir .\config -input-dir .\input -output-dir C:\appData\modelSAA\outputs\v21
 ```
 
 ## 2.2 执行流程（概览）
@@ -90,8 +90,11 @@ modelALM_SAA/
     └─ 逐 run 执行:
            加载假设表、枚举、矩阵、模型点
            并发预测（每个 simulation 独立运行）
-           └─ 写逐情景结果（storedVariables）
-              写统计汇总结果（aggregatedVariables）
+           └─ 写逐模型点结果（storedVariables，可选）
+              按 groupBy 分别汇总产品结果（aggregatedVariables）
+              对 statistics 选中的组件/视图计算跨情景 average/min/max
+              分组与统计文件仅导出 storedVariables 中的汇总变量
+              全部成功后发布 run 级 metadata 与 completion
 ```
 
 ---
@@ -114,6 +117,10 @@ outputpaths:
   logFile: ALM.log
   resultDir: results
 ```
+
+`StructureALM.csv` 使用列 `Name,Kind,Factory,Description,PreloadFrom,PreloadField,Priority`。
+当前只有 `ALM` 产品，工厂为 `RiskCalc`，没有 preload 或 accumulation 组件。
+`ACCUM` 输出是该产品的独立分组视图，不代表另一个组件。
 
 ## 3.2 config/variablesets/ — 输出变量集
 
@@ -151,28 +158,29 @@ runs:
   RUN_001:
     name: RUN_001
     structure: StructureALM       # 引用 config/structures/StructureALM.csv 中的 Name
-    simulations: 1~2              # 模拟情景范围（闭区间，对应 SAA_Sims.fac 的行）
+    simulations: 1~4              # 模拟情景范围（闭区间，对应 SAA_Sims.fac 的行）
     variableSets:
       - default                   # 引用 runsettings/variablesets/default.yaml
     parameters:
       - default                   # 引用 runsettings/parameters/default.yaml
     options:
-      - default                   # 引用 runsettings/options/default.yaml（当前为空）
+      - default                   # 引用 runsettings/options/default.yaml
     diagnostics:
       - default                   # 引用 runsettings/diagnostics/default.yaml（默认关闭）
     filenames:
       - default                   # 引用 runsettings/filenames/default.yaml
     fileLocations:
       - default                   # 引用 runsettings/filelocations/default.yaml
-    seriatimResults: true         # true = 同时输出逐情景明细
+    seriatimResults: true         # true = 同时输出每个情景、每个模型点的明细
 ```
 
 **当前 run 清单**：
 
 | Run | Structure | Simulations | VariableSet | 输出变量 |
 |-----|-----------|-------------|-------------|---------|
-| `RUN_001` | StructureALM | 1~2 | `default` | 全量（ALM）存储，KRI 汇总 |
-| `RUN_002` | StructureALM | 1 | `run2` | KRI_1 + KRI_2 存储与汇总 |
+| `RUN_001` | StructureALM | 1~4 | `default` | 全量（ALM）存储，KRI 汇总 |
+
+`run2.yaml` 是可选的变量集配置，当前没有启用名为 `RUN_002` 的 run。
 
 ## 4.3 input/runsettings/filenames/default.yaml — 表文件映射
 
@@ -231,8 +239,8 @@ globals:
 | 键 | 说明 |
 |----|------|
 | `calculatedVariables` | 需要计算的变量集（必须覆盖输出变量的完整依赖链） |
-| `storedVariables` | 写入逐情景明细结果的变量集 |
-| `aggregatedVariables` | 写入统计汇总结果的变量集 |
+| `storedVariables` | 导出变量范围；逐模型点文件可包含全量，分组/统计文件只导出已汇总的变量 |
+| `aggregatedVariables` | 在模型点之间按 groupBy 加总，并供跨情景统计使用的数值变量 |
 
 **default.yaml**（RUN_001）：
 
@@ -244,7 +252,7 @@ globals:
     aggregatedVariables: [ALM_KRI, ALM_KRI_2] # 汇总 PORT_RETURN_RATE / PORT_RISK / PCR_TOTAL
 ```
 
-**run2.yaml**（RUN_002）：
+**run2.yaml**（可选，当前未启用）：
 
 ```yaml
 globals:
@@ -256,19 +264,42 @@ globals:
 
 ---
 
+## 4.6 input/runsettings/options/ — 分组和统计选择
+
+```yaml
+globals:
+  options:
+    outputStep: "true"
+    groupBy: [SP_CODE, ACCUM]
+    statistics:
+      - component: ALM
+        views: [SP_CODE]
+```
+
+`groupBy` 中每个字段形成独立视图，不是字段组合。默认每个情景分别按
+`SP_CODE` 和 `ACCUM` 汇总 `ALM` 的 `PORT_RETURN_RATE`、`PORT_RISK`、
+`PCR_TOTAL`；跨四个情景只对 `ALM/SP_CODE` 计算 average/min/max。
+统计为各时点分别计算，不跨时间求和。多个模型点分组时，即使是收益率、
+风险率等指标，也按引擎的数值加总规则处理，不自动加权或重新计算。
+
+可用 MP 中任意 `txt`/`int` 字段替换分组字段；`num` 字段不能作为分组键。
+默认值来自 `globals.options`，run 顶层的 `groupBy`、`statistics` 可分别覆盖；
+显式 `groupBy: []` 禁用产品分组，显式 `statistics: []` 禁用跨情景统计。
+禁用分组时也必须禁用或调整引用这些视图的统计选择。
+
 # 5. input/mpfs/ — 模型点文件
 
-文件名（不含扩展名）须与 `config/structures/StructureALM.csv` 中的 `Name` 字段对应。`.csv` 格式，**第二行为字段类型声明行**（`core` / `num` / `txt`），不属于数据行。
+文件名（不含扩展名）须与 `config/structures/StructureALM.csv` 中的 `Name` 字段对应。`.csv` 格式，**第二行为字段类型声明行**（`txt` / `int` / `num`），不属于数据行。旧 `core` 类型不再支持；分组与 preload 只接受 `txt`、`int`，`num` 明确报错。
 
 ## 5.1 字段说明
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `ID` | `core` | 模型点唯一标识，与 `simulations` 范围对应 |
-| `PLAN_CODE` | `core` | 产品代码（如 `FUND01`） |
-| `SP_CODE` | `core` | 子产品/分组代码 |
-| `ACCUM` | `core` | 累积规则标识 |
-| `PROJ_TERM_M` | `core` | 该模型点的预测月数 |
+| `ID` | `int` | 模型点唯一标识，与情景编号独立；每个情景均运行这些模型点 |
+| `PLAN_CODE` | `txt` | 产品代码（如 `FUND01`） |
+| `SP_CODE` | `txt` | 子产品/分组代码 |
+| `ACCUM` | `txt` | 普通业务分组字段，当前值为 `FUND`，不是保留字段或 accumulation 规则 |
+| `PROJ_TERM_M` | `int` | 该模型点的预测月数 |
 | `TOT_ASSET` | `num` | 资产总额 |
 | `TOT_LIAB` | `num` | 负债总额（用于 `INT_RISK_SCAL`） |
 | `LIAB_DUR_PCR` | `num` | 负债 PCR 久期（用于 `INT_RISK_SCAL`） |
@@ -285,7 +316,6 @@ globals:
 | 文件 | 对应 Structure | 模型点数 | 内容 |
 |------|---------------|---------|------|
 | `ALM.csv` | `ALM` | 1 | FUND01，`INT_DN` |
-| `ALM_TEST.csv` | `ALM_TEST` | 2 | FUND01 + FUND02，均为 `INT_DN` |
 
 ---
 
@@ -295,25 +325,41 @@ globals:
 
 ```
 <output-dir>/
-└── <RUN_NAME>/
+└── results/
+  └── <RUN_NAME>/
     ├── .log/
     │   └── ALM.log        # 结构化日志（debug 级别）
-    ├── SP_CODE\<component>.fac
-    ├── SP_CODE\metadata\metadata.yaml
-    ├── ACCUM\<component>.fac
-    ├── ACCUM\metadata\metadata.yaml
-    ├── stats\average\SP_CODE\<component>.fac
-    ├── stats\average\SP_CODE\metadata\metadata.yaml
-    ├── stats\min\SP_CODE\...       # 同上，SIM_ID=0
-    ├── stats\max\SP_CODE\...       # 同上，SIM_ID=0
-    └── seriatim/          # seriatimResults = true 时生成 FAC
+    ├── ALM_by_SP_CODE.fac
+    ├── ALM_by_ACCUM.fac
+    ├── ALM_by_SP_CODE_average.fac
+    ├── stats/
+    │   ├── ALM_by_SP_CODE_min.fac
+    │   └── ALM_by_SP_CODE_max.fac
+    ├── metadata/
+    │   ├── metadata.yaml
+    │   └── completion.yaml
+    └── seriatim/          # seriatimResults = true 时生成四个逐模型点 FAC
 ```
 
 ## 6.2 seriatimResults
 
-`seriatimResults: true` 时，额外输出每个 simulation × 每个模型点的 FAC，显式 MP 文件名不变，行键为 SIM_ID、NAME、MP_ID、PLAN_CODE、SP_CODE、VAR_NAME，变量范围由 `storedVariables` 决定，时点由 `outputStep` 决定。设为 `false` 跳过逐 MP 文件，仍保留 SP_CODE、ACCUM 和 stats。各视图文本另存 `<component>_text.fac`。SP_CODE/统计行键保留 SP_CODE，ACCUM 目录使用 ACCUM，空 ACCUM 报错；输出失败通过 `RunProjection` 返回入口并非零退出。
+`seriatimResults: true` 时，额外输出每个 simulation × 每个模型点的 FAC，
+文件名为 `ALM-<ID>-<PLAN_CODE>-sp<SP_CODE>-sim<SIM_ID>.fac`，
+行键为 SIM_ID、NAME、MP_ID、PLAN_CODE、SP_CODE、VAR_NAME。
+变量范围由 `storedVariables` 决定，时点由 `outputStep` 决定。
+设为 `false` 只跳过逐 MP 文件，不禁用分组和已选统计。
 
-每个叶视图目录的 `metadata\metadata.yaml` 仅列本视图数值 products，共享 generation；主视图 `formulae.view` 和 `formulae.field` 同为 SP_CODE 或 ACCUM，ACCUM 使用 accum，不冒充 spCode。统计 view 为小写 average/min/max、field 为 SP_CODE，SIM_ID=0。目录由引擎共享字段描述符生成，不依赖 accumulation 文件。重跑在写入前使新叶 catalog 及旧根目录、bySP、byTag、stats\average|min|max catalog 失效，全部输出成功后才发布，发布失败回滚新 catalog；保留历史 FAC。空视图发布 `products: []`。resReader 的 `-source-dir` 指向 `SP_CODE` 或 `stats\<stat>\SP_CODE` 叶目录，从 metadata 识别 view/field，无 `-view`；显式指定 extraction ID/name，可提供变量语义，仅引用 FAC，不复制数值，不支持 ACCUM、旧版 catalog 或空视图。下游精确校验源 generation/view/field，重跑后须重新导入，勿在发布时导入。
+普通分组结果的行键为 SIM_ID、NAME、分组字段、VAR_NAME；
+统计结果的行键为 NAME、分组字段、VAR_NAME，**不含 SIM_ID**。
+文本仅保留在逐 MP 结果，不参与分组加总或跨情景统计。
+分组字段缺失、为空或类型为 `num` 时明确报错。
+
+所有分组/统计共用 run 根目录下的 `metadata\metadata.yaml`，
+catalog 按 component/view/group/statistic 标识结果，并记录相对于 run 的文件路径。
+只有整个 run 输出成功后才发布 `metadata\completion.yaml`；
+输出失败由 `RunProjection` 返回入口并非零退出。不要用旧版叶目录 metadata 或
+历史 FAC 判断本次运行成功，读取方应以本次 run catalog 和 completion 为准。
+旧版 resReader 已停用，resParser 尚未适配此输出协议。
 
 ---
 
@@ -345,13 +391,13 @@ globals:
 ## 7.4 扩展模拟情景数量
 
 1. 在 `input/tables/SAA_Sims.fac` 中添加新情景行（行键为新的 simulation 编号）。
-2. 若需要新的模型点，在 `input/mpfs/ALM.csv` 中追加对应行（`ID` 与 simulation 编号对应）。
+2. 情景与模型点独立；不需要为每个新情景新增模型点。只有新增业务模型点时才修改 `input/mpfs/ALM.csv`。
 3. 在 `runsettings.yaml` 中将 `simulations` 范围扩大，如 `1~10`。
 
 ## 7.5 精简输出（减少结果文件体积）
 
 - 将 `variablesets/<name>.yaml` 中的 `storedVariables` 改为精简集合（如 `ALM_KRI`）。
-- 将 `seriatimResults` 设为 `false` 可完全跳过逐情景明细输出。
+- 将 `seriatimResults` 设为 `false` 可跳过逐模型点明细输出，仍保留逐情景分组结果。
 
 ## 7.6 更新模型点数据
 
