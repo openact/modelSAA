@@ -12,6 +12,7 @@ import (
 	"github.com/openact/kit/cache/v3"
 	"github.com/openact/kit/cli"
 	"github.com/openact/kit/resultmeta"
+	"github.com/openact/modelSAA/lib"
 	"gopkg.in/yaml.v3"
 )
 
@@ -68,6 +69,42 @@ func assertSAANumber(t *testing.T, got, want float64) {
 func TestSAAConfiguredRunsPreserveFinancialResults(t *testing.T) {
 	for name, setting := range localSAASettings(t) {
 		t.Run(name, func(t *testing.T) {
+			categories := setting.Enums["ASSET_CATEGORY"]
+			wantCategories := []string{
+				"AC", "IG_Tradable", "HY", "Securitized_CMBS", "DM", "EM", "PE",
+				"Loan_Private_Credit", "Property", "Hedging_Fund", "Convertible_Bond",
+				"QIS", "Loan_Private_Credit_New", "Dummy_2", "Dummy_3", "Dummy_4",
+				"Dummy_5", "Dummy_6", "Dummy_7", "Cash", "Deposit_ST_Govern_Bond",
+				"Seed_Capital", "Other_Asset",
+			}
+			if categories == nil || !reflect.DeepEqual(categories.Values(), wantCategories) {
+				t.Fatal("ASSET_CATEGORY must preserve the configured category order")
+			}
+			classes := setting.Enums["ASSET_CLASS"]
+			if classes == nil || !reflect.DeepEqual(classes.Values(),
+				[]string{"Cash", "Bond", "Equity", "Alternatives", "Others", "Dummy"}) {
+				t.Fatal("ASSET_CLASS must define the six configured asset classes")
+			}
+			mappingContext := formulae.NewProjContext(setting, "1", "ALM", &formulae.ModelPoint{})
+			wantClasses := []string{
+				"Bond", "Bond", "Bond", "Bond", "Equity", "Equity", "Equity",
+				"Alternatives", "Alternatives", "Alternatives", "Alternatives", "Alternatives", "Alternatives",
+				"Dummy", "Dummy", "Dummy", "Dummy", "Dummy", "Dummy",
+				"Cash", "Bond", "Bond", "Others",
+			}
+			for i, category := range wantCategories {
+				if got := lib.AssetClassByCategory(mappingContext, category); got != wantClasses[i] {
+					t.Fatalf("class for %s = %s, want %s", category, got, wantClasses[i])
+				}
+			}
+			for _, column := range setting.Tables["assump"].ColKeys {
+				if column == "class" {
+					t.Fatal("Assump must use ASSET_CLASS instead of the legacy CLASS column")
+				}
+			}
+			if _, exists := setting.Tables["asset_category"]; exists {
+				t.Fatal("asset categories must be mapped in Assump, not a separate table")
+			}
 			if !reflect.DeepEqual(setting.GroupBy, []string{"SP_CODE", "ACCUM"}) ||
 				!reflect.DeepEqual(setting.Statistics, []formulae.StatisticsSpec{{Component: "ALM", Views: []string{"SP_CODE"}}}) {
 				t.Fatalf("unexpected grouping/statistics: %v, %v", setting.GroupBy, setting.Statistics)
@@ -138,7 +175,7 @@ func TestSAAScenarioStatisticsAndOutput(t *testing.T) {
 				if item.Statistic == "" {
 					for sim, variables := range saaLegacyKRI {
 						for variable, want := range variables {
-							got, found, err := table.Float([]string{sim, "ALM", item.Group, variable}, "202412")
+							got, found, err := table.Float([]string{sim, "ALM", item.GroupValue, variable}, "202412")
 							if err != nil || !found {
 								t.Fatalf("missing scenario value %s/%s: %v", sim, variable, err)
 							}
@@ -147,7 +184,7 @@ func TestSAAScenarioStatisticsAndOutput(t *testing.T) {
 					}
 					continue
 				}
-				if item.View != "SP_CODE" || item.Group != "1" {
+				if item.GroupField != "SP_CODE" || item.GroupValue != "1" {
 					t.Fatalf("unexpected statistics identity: %+v", item)
 				}
 				for _, variable := range []string{"PORT_RETURN_RATE", "PORT_RISK", "PCR_TOTAL"} {
@@ -196,7 +233,7 @@ func TestSAAScenarioStatisticsAndOutput(t *testing.T) {
 					t.Fatalf("missing seriatim array %s/%s: %v", sim, variable, err)
 				}
 				ctx := &formulae.ProjContext{Setting: setting}
-				assertSAANumber(t, got, ctx.ReadTableNum("SAA_Sims", "Y", sim, ctx.EnumTxt("ASSET_CLASS", 1)))
+				assertSAANumber(t, got, ctx.ReadTableNum("SAA_Sims", "Y", sim, ctx.EnumTxt("ASSET_CATEGORY", 1)))
 			}
 		})
 	}

@@ -149,6 +149,12 @@ inputpaths:
 
 > `matrices/` 和 `enums/` 下所有文件在启动时自动加载，无需在 filenames 中注册。
 
+资产分类仅有两级：`ASSET_CLASS.csv` 定义 Cash、Bond、Equity、Alternatives、Others、Dummy，`ASSET_CATEGORY.csv` 保留现有细类。`input/tables/Assump.fac` 以 category 为行键，`ASSET_CLASS` 列定义细类归属，与其他资产假设集中在同一张表中，不需要独立映射表或额外的 filenames 注册。
+
+新增 category 时，须同步更新 category 枚举、Assump、SAA_Sims 和资产相关矩阵；仅调整大类归属时，修改 Assump 的 `ASSET_CLASS` 列即可。Assump 必须覆盖全部 category 且每个 category 仅出现一次，class 必须属于大类枚举；名称匹配不区分大小写，空值和非法配置会报错。class 可以暂时没有细类。
+
+原 `Assump.fac` 的 `CLASS` 列改名为 `ASSET_CLASS`：`Fixed_Income → Bond`，`Other_Asset → Others`，`Alternatives` 及其余分组保留。映射不改变 category 级公式、财务分组或输出。
+
 ## 4.2 input/runsettings/runsettings.yaml — run 清单
 
 每个 run 是一次完整的预测执行单元，程序按顺序逐一运行。
@@ -205,7 +211,7 @@ globals:
 
 | 逻辑表名 | 用于变量 | 内容 |
 |---------|---------|------|
-| `Assump` | `ASSET_RETURN_RATE`, `ASSET_SD_RATE`, `ASSET_MSCI_MIX`, `NAR_*`, `RC_ASSET_*` 等 | 资产假设 |
+| `Assump` | `ASSET_RETURN_RATE`, `ASSET_SD_RATE`, `ASSET_MSCI_MIX`, `NAR_*`, `RC_ASSET_*` 等；`ASSET_MIX` 首次计算时校验分类映射 | 资产假设及 category 到 class 的映射（`AssetClassByCategory` 查询） |
 | `Param` | `RC_FAC_HKD`, `RC_FAC_USD`, `RC_FAC_CNY`, `RC_FAC_MSCI` | 时间步级风险资本因子 |
 | `SAA_Sims` | `ASSET_MIX` | SAA 权重（按情景） |
 | `RF_Curves` | `RF_ECON_SCENARIO`, `HKD_BOND_MV_CHG`, `USD_BOND_MV_CHG` | 无风险利率曲线 |

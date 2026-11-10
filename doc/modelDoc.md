@@ -44,12 +44,12 @@ run 根目录，min/max 位于 `stats`，共用 run 级 catalog/completion；
 
 ## Assump.fac
 
-**用途**：各资产类别的核心假设，逐行按 `ASSET_CLASS` 索引。
-**键列**：`ASSET_CLASS`（1 个键）
+**用途**：各资产类别的核心假设，逐行按 `ASSET_CATEGORY` 索引。
+**键列**：`ASSET_CATEGORY`（1 个键）
 
 | 列名 | 含义 |
 |------|------|
-| `CLASS` | 资产大类（Fixed_Income / Equity / Alternatives / Cash / Dummy 等） |
+| `ASSET_CLASS` | 资产大类，必须属于 `ASSET_CLASS` 枚举；定义当前 category 的归属 |
 | `BOND_TYPE` | 债券子类型（IG / HY / Private_Credit，非债券为空） |
 | `ASSET_MIX` | 默认资产配置比例（被 SAA_Sims 按情景覆盖） |
 | `NAR_TOT` | NAR 总倍数（`ASSET_BAL × NAR_TOT = NAR_TOT`） |
@@ -65,6 +65,24 @@ run 根目录，min/max 位于 `stats`，共用 run 级 catalog/completion；
 | `RC_FAC_PROP` | 房地产资产风险资本因子 |
 
 **资产类别**：AC · IG_Tradable · HY · Securitized_CMBS · DM · EM · PE · Loan_Private_Credit · Property · Hedging_Fund · Convertible_Bond · QIS · Loan_Private_Credit_New · Cash · Deposit_ST_Govern_Bond · Seed_Capital · Other_Asset · Dummy_2~7
+
+本表的旧 `CLASS` 列改名为 `ASSET_CLASS`，在同一张表内定义 `ASSET_CATEGORY` 到 `ASSET_CLASS` 的唯一映射；枚举定义成员，Assump 配置分类归属及财务假设，不需要独立映射表。
+
+| ASSET_CLASS | ASSET_CATEGORY |
+|-------------|----------------|
+| `Cash` | Cash |
+| `Bond` | AC、IG_Tradable、HY、Securitized_CMBS、Deposit_ST_Govern_Bond、Seed_Capital |
+| `Equity` | DM、EM、PE |
+| `Alternatives` | Loan_Private_Credit、Property、Hedging_Fund、Convertible_Bond、QIS、Loan_Private_Credit_New |
+| `Others` | Other_Asset |
+| `Dummy` | Dummy_2～Dummy_7 |
+
+映射沿用原 Assump 分组，将 `Fixed_Income` 统一为 `Bond`、`Other_Asset` 统一为 `Others`，保留 `Alternatives`，不按类别名称重新归类。
+
+代码使用 `rowkey` / `colkey` 结构体加载配置，在每个投影上下文中懒初始化并缓存。
+`ASSET_MIX` 首次计算时触发全表校验；缺失、重复、未知 category、空值或非法 class 均明确报错，不默认归入 Others。
+表中的名称按大小写不敏感方式匹配并规范为 enum 的 VALUE；查询接口 `AssetClassByCategory(ctx, category)` 使用规范的 category VALUE。
+允许 class 暂无 category。现有财务公式与输出维度保持不变，`BOND_TRAD` / `BOND_ALT` 仍按原有财务分组计算，不直接按 class 汇总。
 
 ---
 
@@ -89,9 +107,9 @@ run 根目录，min/max 位于 `stats`，共用 run 级 catalog/completion；
 **用途**：按模拟情景编号给出战略资产配置（SAA）权重，用于 `ASSET_MIX`。
 **键列**：`SIMULATION`（1 个键）
 
-每列对应一个 `ASSET_CLASS`，值为该情景下的资产配置权重（合计应为 1）。当前配置运行情景 1～4。
+每列对应一个 `ASSET_CATEGORY`，值为该情景下的资产配置权重（合计应为 1）。当前配置运行情景 1～4。
 
-> 被 `ASSET_MIX[i, class] = Table("SAA_Sims", "Y", sim, class)` 按模拟编号逐行读取。
+> 被 `ASSET_MIX[i, category] = Table("SAA_Sims", "Y", sim, category)` 按模拟编号逐行读取。
 
 ---
 
@@ -201,9 +219,13 @@ run 根目录，min/max 位于 `stats`，共用 run 级 catalog/completion；
 
 ---
 
-## ASSET_CLASS.csv
+## ASSET_CATEGORY.csv
 
 **用途**：资产类别枚举，模型最核心的向量维度，贯穿所有资产级别变量（`ASSET_MIX`、`ASSET_BAL`、`NAR_FI`、`NAR_EQ`、`NAR_PROP`、`RC_ASSET_EQ` 等）。
+
+`ASSET_CATEGORY` 表示 SAA 的细分配置类别，与 `ASSET_CLASS` 大类构成两级分类。不改变现有 23 个类别的 KEY、VALUE 或顺序；category 到 class 的归属统一配置在 `Assump.fac` 的 `ASSET_CLASS` 列。
+
+命名约定：`class` 表示资产大类，`category` 表示细分配置类别（如 IG_Tradable、HY、DM 等）。下文遍历 `ASSET_CATEGORY` 的伪代码统一使用 `category`。不引入第三层 type。
 
 | KEY | VALUE | 说明 |
 |-----|-------|------|
@@ -225,6 +247,21 @@ run 根目录，min/max 位于 `stats`，共用 run 级 catalog/completion；
 | 21 | `Deposit_ST_Govern_Bond` | 存款 / 短期政府债 |
 | 22 | `Seed_Capital` | 种子资本 |
 | 23 | `Other_Asset` | 其他资产 |
+
+---
+
+## ASSET_CLASS.csv
+
+**用途**：资产大类枚举，用于校验 `Assump.fac` 的 `ASSET_CLASS` 列；不替代现有 category 级向量维度，不新增大类汇总输出。
+
+| KEY | VALUE | 说明 |
+|-----|-------|------|
+| 1 | `Cash` | 现金及现金等价物 |
+| 2 | `Bond` | 固定收益资产 |
+| 3 | `Equity` | 权益资产 |
+| 4 | `Alternatives` | 另类资产 |
+| 5 | `Others` | 其他业务资产 |
+| 6 | `Dummy` | 技术占位类别 |
 
 ---
 
@@ -310,7 +347,7 @@ $$\text{result} = \sqrt{\mathbf{v}^\top \mathbf{C} \, \mathbf{v}}$$
 ## ASSET_CORR_MATRIX.csv
 
 **用途**：资产类别间的协方差矩阵，用于 `PORT_RISK`（组合风险）计算。
-**维度**：23×23，行列标签均为 `ASSET_CLASS` 枚举值。
+**维度**：23×23，行列标签均为 `ASSET_CATEGORY` 枚举值。
 
 **调用公式**：`PORT_RISK = ArrayAggregateByCorr(ctx, i, "ASSET_CORR_MATRIX", ASSET_MIX)`
 
@@ -453,11 +490,11 @@ RC_FAC_CNY[i] = Table("Param", col=i, "RC_FAC_CNY")
 
 ---
 
-## 9. ASSET_MIX　`Array[ASSET_CLASS] :: Num`
+## 9. ASSET_MIX　`Array[ASSET_CATEGORY] :: Num`
 
 ```
-for each class:
-    ASSET_MIX[i, class] = Table("SAA_Sims", col="Y", sim, class)
+for each category:
+    ASSET_MIX[i, category] = Table("SAA_Sims", col="Y", sim, category)
 ```
 
 > 按模拟情景 `sim` 从 SAA_Sims 表读取各资产类别的配置比例。
@@ -534,47 +571,47 @@ for each (rating, term):
 
 ---
 
-## 17. ASSET_BAL　`Array[ASSET_CLASS] :: Num`
+## 17. ASSET_BAL　`Array[ASSET_CATEGORY] :: Num`
 
 ```
-for each class:
-    ASSET_BAL[i, class] = mp.TOT_ASSET * ASSET_MIX[i, class]
-```
-
----
-
-## 18. NAR_TOT　`Array[ASSET_CLASS] :: Num`
-
-```
-for each class:
-    NAR_TOT[i, class] = ASSET_BAL[i, class] * Table("Assump", "Y", class, "NAR_TOT")
+for each category:
+    ASSET_BAL[i, category] = mp.TOT_ASSET * ASSET_MIX[i, category]
 ```
 
 ---
 
-## 19. NAR_FI　`Array[ASSET_CLASS] :: Num`
+## 18. NAR_TOT　`Array[ASSET_CATEGORY] :: Num`
 
 ```
-for each class:
-    NAR_FI[i, class] = ASSET_BAL[i, class] * Table("Assump", "Y", class, "NAR_FI")
-```
-
----
-
-## 20. NAR_EQ　`Array[ASSET_CLASS] :: Num`
-
-```
-for each class:
-    NAR_EQ[i, class] = ASSET_BAL[i, class] * Table("Assump", "Y", class, "NAR_EQ")
+for each category:
+    NAR_TOT[i, category] = ASSET_BAL[i, category] * Table("Assump", "Y", category, "NAR_TOT")
 ```
 
 ---
 
-## 21. NAR_PROP　`Array[ASSET_CLASS] :: Num`
+## 19. NAR_FI　`Array[ASSET_CATEGORY] :: Num`
 
 ```
-for each class:
-    NAR_PROP[i, class] = ASSET_BAL[i, class] * Table("Assump", "Y", class, "NAR_PROP")
+for each category:
+    NAR_FI[i, category] = ASSET_BAL[i, category] * Table("Assump", "Y", category, "NAR_FI")
+```
+
+---
+
+## 20. NAR_EQ　`Array[ASSET_CATEGORY] :: Num`
+
+```
+for each category:
+    NAR_EQ[i, category] = ASSET_BAL[i, category] * Table("Assump", "Y", category, "NAR_EQ")
+```
+
+---
+
+## 21. NAR_PROP　`Array[ASSET_CATEGORY] :: Num`
+
+```
+for each category:
+    NAR_PROP[i, category] = ASSET_BAL[i, category] * Table("Assump", "Y", category, "NAR_PROP")
 ```
 
 ---
@@ -582,8 +619,8 @@ for each class:
 ## 22. BOND_TRAD　`Scalar :: Num`
 
 ```
-BOND_TRAD[i] = Σ NAR_FI[i, class]
-               for class in {AC, IG_Tradable, HY, Securitized_CMBS}
+BOND_TRAD[i] = Σ NAR_FI[i, category]
+               for category in {AC, IG_Tradable, HY, Securitized_CMBS}
 ```
 
 ---
@@ -591,8 +628,8 @@ BOND_TRAD[i] = Σ NAR_FI[i, class]
 ## 23. BOND_ALT　`Scalar :: Num`
 
 ```
-BOND_ALT[i] = Σ NAR_FI[i, class]
-              for class in {Loan_Private_Credit}
+BOND_ALT[i] = Σ NAR_FI[i, category]
+              for category in {Loan_Private_Credit}
 ```
 
 ---
@@ -627,11 +664,11 @@ for each (rating, term):
 
 ---
 
-## 27. TOT_NAR　`Array[ASSET_CLASS] :: Num`
+## 27. TOT_NAR　`Array[ASSET_CATEGORY] :: Num`
 
 ```
-for each class:
-    TOT_NAR[i, class] = NAR_FI[i, class] + NAR_EQ[i, class] + NAR_PROP[i, class]
+for each category:
+    TOT_NAR[i, category] = NAR_FI[i, category] + NAR_EQ[i, category] + NAR_PROP[i, category]
 ```
 
 ---
@@ -668,110 +705,110 @@ for each (econ, scenario):
 
 ---
 
-## 31. RC_ASSET_EQ　`Array[ASSET_CLASS] :: Num`
+## 31. RC_ASSET_EQ　`Array[ASSET_CATEGORY] :: Num`
 
 ```
-for each class:
-    RC_ASSET_EQ[i, class] = NAR_EQ[i, class] * Table("Assump", "Y", class, "RC_FAC_EQ")
-```
-
----
-
-## 32. RC_ASSET_PROP　`Array[ASSET_CLASS] :: Num`
-
-```
-for each class:
-    RC_ASSET_PROP[i, class] = NAR_PROP[i, class] * Table("Assump", "Y", class, "RC_FAC_PROP")
+for each category:
+    RC_ASSET_EQ[i, category] = NAR_EQ[i, category] * Table("Assump", "Y", category, "RC_FAC_EQ")
 ```
 
 ---
 
-## 33. ASSET_RETURN_RATE　`Array[ASSET_CLASS] :: Num`
+## 32. RC_ASSET_PROP　`Array[ASSET_CATEGORY] :: Num`
 
 ```
-for each class:
-    ASSET_RETURN_RATE[i, class] = Table("Assump", "Y", class, "RET_RATE")
-```
-
----
-
-## 34. ASSET_SD_RATE　`Array[ASSET_CLASS] :: Num`
-
-```
-for each class:
-    ASSET_SD_RATE[i, class] = Table("Assump", "Y", class, "SD_RATE")
+for each category:
+    RC_ASSET_PROP[i, category] = NAR_PROP[i, category] * Table("Assump", "Y", category, "RC_FAC_PROP")
 ```
 
 ---
 
-## 35. ASSET_HKD_MIX　`Array[ASSET_CLASS] :: Num`
+## 33. ASSET_RETURN_RATE　`Array[ASSET_CATEGORY] :: Num`
 
 ```
-for each class:
-    ASSET_HKD_MIX[i, class] = Table("Assump", "Y", class, "ASSET_HKD_MIX")
-```
-
----
-
-## 36. ASSET_USD_MIX　`Array[ASSET_CLASS] :: Num`
-
-```
-for each class:
-    ASSET_USD_MIX[i, class] = Table("Assump", "Y", class, "ASSET_USD_MIX")
+for each category:
+    ASSET_RETURN_RATE[i, category] = Table("Assump", "Y", category, "RET_RATE")
 ```
 
 ---
 
-## 37. ASSET_MSCI_MIX　`Array[ASSET_CLASS] :: Num`
+## 34. ASSET_SD_RATE　`Array[ASSET_CATEGORY] :: Num`
 
 ```
-for each class:
-    ASSET_MSCI_MIX[i, class] = Table("Assump", "Y", class, "ASSET_MSCI_MIX")
-```
-
----
-
-## 38. NAR_TOT_HKD　`Array[ASSET_CLASS] :: Num`
-
-```
-for each class:
-    NAR_TOT_HKD[i, class] = NAR_TOT[i, class] * ASSET_HKD_MIX[i, class]
+for each category:
+    ASSET_SD_RATE[i, category] = Table("Assump", "Y", category, "SD_RATE")
 ```
 
 ---
 
-## 39. NAR_TOT_USD　`Array[ASSET_CLASS] :: Num`
+## 35. ASSET_HKD_MIX　`Array[ASSET_CATEGORY] :: Num`
 
 ```
-for each class:
-    NAR_TOT_USD[i, class] = NAR_TOT[i, class] * ASSET_USD_MIX[i, class]
-```
-
----
-
-## 40. NAR_TOT_MSCI　`Array[ASSET_CLASS] :: Num`
-
-```
-for each class:
-    NAR_TOT_MSCI[i, class] = NAR_TOT[i, class] * ASSET_MSCI_MIX[i, class]
+for each category:
+    ASSET_HKD_MIX[i, category] = Table("Assump", "Y", category, "ASSET_HKD_MIX")
 ```
 
 ---
 
-## 41. NAR_FI_HKD　`Array[ASSET_CLASS] :: Num`
+## 36. ASSET_USD_MIX　`Array[ASSET_CATEGORY] :: Num`
 
 ```
-for each class:
-    NAR_FI_HKD[i, class] = NAR_FI[i, class] * ASSET_HKD_MIX[i, class]
+for each category:
+    ASSET_USD_MIX[i, category] = Table("Assump", "Y", category, "ASSET_USD_MIX")
 ```
 
 ---
 
-## 42. NAR_FI_USD　`Array[ASSET_CLASS] :: Num`
+## 37. ASSET_MSCI_MIX　`Array[ASSET_CATEGORY] :: Num`
 
 ```
-for each class:
-    NAR_FI_USD[i, class] = NAR_FI[i, class] * ASSET_USD_MIX[i, class]
+for each category:
+    ASSET_MSCI_MIX[i, category] = Table("Assump", "Y", category, "ASSET_MSCI_MIX")
+```
+
+---
+
+## 38. NAR_TOT_HKD　`Array[ASSET_CATEGORY] :: Num`
+
+```
+for each category:
+    NAR_TOT_HKD[i, category] = NAR_TOT[i, category] * ASSET_HKD_MIX[i, category]
+```
+
+---
+
+## 39. NAR_TOT_USD　`Array[ASSET_CATEGORY] :: Num`
+
+```
+for each category:
+    NAR_TOT_USD[i, category] = NAR_TOT[i, category] * ASSET_USD_MIX[i, category]
+```
+
+---
+
+## 40. NAR_TOT_MSCI　`Array[ASSET_CATEGORY] :: Num`
+
+```
+for each category:
+    NAR_TOT_MSCI[i, category] = NAR_TOT[i, category] * ASSET_MSCI_MIX[i, category]
+```
+
+---
+
+## 41. NAR_FI_HKD　`Array[ASSET_CATEGORY] :: Num`
+
+```
+for each category:
+    NAR_FI_HKD[i, category] = NAR_FI[i, category] * ASSET_HKD_MIX[i, category]
+```
+
+---
+
+## 42. NAR_FI_USD　`Array[ASSET_CATEGORY] :: Num`
+
+```
+for each category:
+    NAR_FI_USD[i, category] = NAR_FI[i, category] * ASSET_USD_MIX[i, category]
 ```
 
 ---
@@ -779,7 +816,7 @@ for each class:
 ## 43. SUM_NAR_FI_HKD　`Scalar :: Num`
 
 ```
-SUM_NAR_FI_HKD[i] = Σ NAR_FI_HKD[i, class]   (sum over ASSET_CLASS)
+SUM_NAR_FI_HKD[i] = Σ NAR_FI_HKD[i, category]   (sum over ASSET_CATEGORY)
 ```
 
 ---
@@ -787,7 +824,7 @@ SUM_NAR_FI_HKD[i] = Σ NAR_FI_HKD[i, class]   (sum over ASSET_CLASS)
 ## 44. SUM_NAR_FI_USD　`Scalar :: Num`
 
 ```
-SUM_NAR_FI_USD[i] = Σ NAR_FI_USD[i, class]   (sum over ASSET_CLASS)
+SUM_NAR_FI_USD[i] = Σ NAR_FI_USD[i, category]   (sum over ASSET_CATEGORY)
 ```
 
 ---
@@ -853,7 +890,7 @@ PORT_BOND_MV_CHG[i] = HKD_BOND_MV_CHG[i] + USD_BOND_MV_CHG[i]
 ## 50. PORT_NAR_HKD　`Scalar :: Num`
 
 ```
-PORT_NAR_HKD[i] = Σ NAR_TOT_HKD[i, class]   (sum over ASSET_CLASS)
+PORT_NAR_HKD[i] = Σ NAR_TOT_HKD[i, category]   (sum over ASSET_CATEGORY)
 ```
 
 ---
@@ -861,7 +898,7 @@ PORT_NAR_HKD[i] = Σ NAR_TOT_HKD[i, class]   (sum over ASSET_CLASS)
 ## 51. PORT_NAR_USD　`Scalar :: Num`
 
 ```
-PORT_NAR_USD[i] = Σ NAR_TOT_USD[i, class]   (sum over ASSET_CLASS)
+PORT_NAR_USD[i] = Σ NAR_TOT_USD[i, category]   (sum over ASSET_CATEGORY)
 ```
 
 ---
@@ -869,7 +906,7 @@ PORT_NAR_USD[i] = Σ NAR_TOT_USD[i, class]   (sum over ASSET_CLASS)
 ## 52. PORT_NAR_MSCI　`Scalar :: Num`
 
 ```
-PORT_NAR_MSCI[i] = Σ NAR_TOT_MSCI[i, class]   (sum over ASSET_CLASS)
+PORT_NAR_MSCI[i] = Σ NAR_TOT_MSCI[i, category]   (sum over ASSET_CATEGORY)
 ```
 
 ---
@@ -877,8 +914,8 @@ PORT_NAR_MSCI[i] = Σ NAR_TOT_MSCI[i, class]   (sum over ASSET_CLASS)
 ## 53. PORT_RETURN_RATE　`Scalar :: Num`
 
 ```
-PORT_RETURN_RATE[i] = Σ ASSET_MIX[i, class] * ASSET_RETURN_RATE[i, class]
-                       (SumProduct over ASSET_CLASS)
+PORT_RETURN_RATE[i] = Σ ASSET_MIX[i, category] * ASSET_RETURN_RATE[i, category]
+                       (SumProduct over ASSET_CATEGORY)
 ```
 
 ---
@@ -905,7 +942,7 @@ PCR_FX[i] = PORT_NAR_HKD[i] * RC_FAC_HKD[i]
 ## 56. PCR_EQ　`Scalar :: Num`
 
 ```
-base = Σ RC_ASSET_EQ[i, class]   (sum over ASSET_CLASS)
+base = Σ RC_ASSET_EQ[i, category]   (sum over ASSET_CATEGORY)
 PCR_EQ[i] = base * (1 - LAC_EQ_FAC) + LAC_EQ_AMT
 ```
 
@@ -914,7 +951,7 @@ PCR_EQ[i] = base * (1 - LAC_EQ_FAC) + LAC_EQ_AMT
 ## 57. PCR_PROP　`Scalar :: Num`
 
 ```
-PCR_PROP[i] = Σ RC_ASSET_PROP[i, class]   (sum over ASSET_CLASS)
+PCR_PROP[i] = Σ RC_ASSET_PROP[i, category]   (sum over ASSET_CATEGORY)
 ```
 
 ---

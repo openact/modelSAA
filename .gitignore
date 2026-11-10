@@ -9,6 +9,7 @@
 *.dylib
 *.zip
 *.DS_Store
+*.xlsx
 
 # Test binary, built with `go test -c`
 *.test
