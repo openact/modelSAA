@@ -1,15 +1,23 @@
 package lib
 
 import (
-	"strings"
+	"errors"
+	"fmt"
 
 	"github.com/openact/formulae"
 	"github.com/openact/kit/cache/v3"
+	"github.com/openact/kit/enum"
 )
 
 type assetCategorySpec struct {
-	Category string `rowkey:"ASSET_CATEGORY"`
-	Class    string `colkey:"ASSET_CLASS"`
+	Category  string `rowkey:"ASSET_CATEGORY" enum:"ASSET_CATEGORY"`
+	Class     string `colkey:"ASSET_CLASS" enum:"ASSET_CLASS"`
+	BondType1 string `colkey:"BOND_TYPE1" enum:"BOND_TYPE1"`
+}
+
+type assetCategorySpecs struct {
+	byCategory    map[string]assetCategorySpec
+	categoryOrder []string
 }
 
 func AssetClassByCategory(ctx *formulae.ProjContext, category string) string {
@@ -17,67 +25,44 @@ func AssetClassByCategory(ctx *formulae.ProjContext, category string) string {
 }
 
 func assetCategoryByValue(ctx *formulae.ProjContext, category string) assetCategorySpec {
-	spec, ok := getAssetCategorySpecs(ctx)[category]
+	spec, ok := getAssetCategorySpecs(ctx).byCategory[category]
 	if !ok {
 		panic("unknown ASSET_CATEGORY: " + category)
 	}
 	return spec
 }
 
-func getAssetCategorySpecs(ctx *formulae.ProjContext) map[string]assetCategorySpec {
-	return formulae.GetOrInitCache(ctx, "assetCategorySpecs", func() map[string]assetCategorySpec {
+func getAssetCategorySpecs(ctx *formulae.ProjContext) *assetCategorySpecs {
+	return formulae.GetOrInitCache(ctx, "assetCategorySpecs", func() *assetCategorySpecs {
 		return loadAssetCategorySpecs(ctx)
 	})
 }
 
-func loadAssetCategorySpecs(ctx *formulae.ProjContext) map[string]assetCategorySpec {
-	categories := assetEnumValues(ctx, "ASSET_CATEGORY")
-	classes := assetEnumValues(ctx, "ASSET_CLASS")
-	specs, err := cache.ScanRows[assetCategorySpec](ctx.Table("assump"))
+func loadAssetCategorySpecs(ctx *formulae.ProjContext) *assetCategorySpecs {
+	table := ctx.Table("assump")
+	specs, err := cache.ScanRows[assetCategorySpec](table)
 	if err != nil {
 		panic(err)
 	}
+	if err := enum.NormalizeFields(specs, ctx.Setting.Enums); err != nil {
+		var fieldErr *enum.FieldError
+		if errors.As(err, &fieldErr) {
+			panic(fmt.Errorf("%s, ASSET_CATEGORY %q: %w", table.FilePath, specs[fieldErr.Row].Category, err))
+		}
+		panic(fmt.Errorf("%s: %w", table.FilePath, err))
+	}
 	byCategory := make(map[string]assetCategorySpec, len(specs))
 	for _, spec := range specs {
-		category, ok := categories[strings.ToLower(spec.Category)]
-		if !ok {
-			panic("unknown ASSET_CATEGORY configuration: " + spec.Category)
+		if _, exists := byCategory[spec.Category]; exists {
+			panic("duplicate ASSET_CATEGORY configuration: " + spec.Category)
 		}
-		if _, exists := byCategory[category]; exists {
-			panic("duplicate ASSET_CATEGORY configuration: " + category)
-		}
-		class, ok := classes[strings.ToLower(spec.Class)]
-		if !ok {
-			panic("invalid ASSET_CLASS for " + category + ": " + spec.Class)
-		}
-		byCategory[category] = assetCategorySpec{Category: category, Class: class}
+		byCategory[spec.Category] = spec
 	}
-	for _, category := range ctx.GetEnum("ASSET_CATEGORY").Values() {
+	categoryOrder := ctx.GetEnum("ASSET_CATEGORY").Values()
+	for _, category := range categoryOrder {
 		if _, ok := byCategory[category]; !ok {
 			panic("missing ASSET_CATEGORY configuration: " + category)
 		}
 	}
-	return byCategory
-}
-
-func assetEnumValues(ctx *formulae.ProjContext, name string) map[string]string {
-	e := ctx.GetEnum(name)
-	if e == nil {
-		panic("missing enum: " + name)
-	}
-	if e.Size() == 0 {
-		panic("empty enum: " + name)
-	}
-	values := make(map[string]string, e.Size())
-	for _, value := range e.Values() {
-		if value == "" {
-			panic("empty enum value in " + name)
-		}
-		key := strings.ToLower(value)
-		if existing, ok := values[key]; ok {
-			panic("ambiguous enum values in " + name + ": " + existing + ", " + value)
-		}
-		values[key] = value
-	}
-	return values
+	return &assetCategorySpecs{byCategory: byCategory, categoryOrder: categoryOrder}
 }

@@ -50,6 +50,7 @@ run 根目录，min/max 位于 `stats`，共用 run 级 catalog/completion；
 | 列名 | 含义 |
 |------|------|
 | `ASSET_CLASS` | 资产大类，必须属于 `ASSET_CLASS` 枚举；定义当前 category 的归属 |
+| `BOND_TYPE1` | 债券计算分组，必须属于同名枚举：TRAD / ALT / NONE；独立于资产分类和 `BOND_TYPE` |
 | `BOND_TYPE` | 债券子类型（IG / HY / Private_Credit，非债券为空） |
 | `ASSET_MIX` | 默认资产配置比例（被 SAA_Sims 按情景覆盖） |
 | `NAR_TOT` | NAR 总倍数（`ASSET_BAL × NAR_TOT = NAR_TOT`） |
@@ -79,10 +80,19 @@ run 根目录，min/max 位于 `stats`，共用 run 级 catalog/completion；
 
 映射沿用原 Assump 分组，将 `Fixed_Income` 统一为 `Bond`、`Other_Asset` 统一为 `Others`，保留 `Alternatives`，不按类别名称重新归类。
 
-代码使用 `rowkey` / `colkey` 结构体加载配置，在每个投影上下文中懒初始化并缓存。
-`ASSET_MIX` 首次计算时触发全表校验；缺失、重复、未知 category、空值或非法 class 均明确报错，不默认归入 Others。
+代码使用 `rowkey` / `colkey` 结构体加载配置，在每个投影上下文中懒初始化并缓存。枚举属性显式标注 `enum:"枚举名"`，统一交给 `kit/enum.NormalizeFields` 校验和规范化；新增枚举属性无需复制逐字段校验代码。模型层仅保留 category 唯一性、完整性校验及索引构建。
+`ASSET_MIX` 首次计算时触发全表校验；缺失、重复、未知 category、空值、非法 class 或非法 `BOND_TYPE1` 均明确报错，不默认归入 Others 或 NONE。
 表中的名称按大小写不敏感方式匹配并规范为 enum 的 VALUE；查询接口 `AssetClassByCategory(ctx, category)` 使用规范的 category VALUE。
-允许 class 暂无 category。现有财务公式与输出维度保持不变，`BOND_TRAD` / `BOND_ALT` 仍按原有财务分组计算，不直接按 class 汇总。
+`kit/enum.NewNormalizer` 提供可独立复用的枚举标准化快照；tag 适配器只共享结构体字段元信息，不共享不同 run 的枚举数据，也不依赖 FAC 或 ProjContext。反射只在初始化时执行。字段错误包含文件、category 行键、记录序号、字段、枚举及原值；记录序号不是包含注释和表头的物理文件行号。
+允许 class 或债券计算分组暂无 category。假设加载层统一用 `byCategory` 保存属性，仅额外缓存通用的 category 枚举顺序，不为 BondType1 或 Class 维护反向分组索引。`udf.go` 的 `arraySumByAssetCategory` 按该顺序读取属性、应用筛选条件，并复用引擎 `ArraySumIf` 求和；同一机制可按 Class、BondType1 等属性筛选任意包含 `ASSET_CATEGORY` 维度的数值数组。公式层以 `spec.BondType1 == "TRAD"` / `"ALT"` 筛选 `NAR_FI`，计算 `BOND_TRAD` / `BOND_ALT`，不直接按 class 汇总。
+
+| BOND_TYPE1 | 初始 ASSET_CATEGORY |
+|------------|---------------------|
+| `TRAD` | AC、IG_Tradable、HY、Securitized_CMBS |
+| `ALT` | Loan_Private_Credit |
+| `NONE` | 其余 category |
+
+该初始配置保持原有计算口径，包括 Loan_Private_Credit_New、Deposit_ST_Govern_Bond、Seed_Capital 不计入上述两组。调整 `BOND_TYPE1` 会改变债券久期及相关利率、信用利差风险计算；`BOND_TYPE` 原值保持不变。
 
 ---
 
@@ -262,6 +272,18 @@ run 根目录，min/max 位于 `stats`，共用 run 级 catalog/completion；
 | 4 | `Alternatives` | 另类资产 |
 | 5 | `Others` | 其他业务资产 |
 | 6 | `Dummy` | 技术占位类别 |
+
+---
+
+## BOND_TYPE1.csv
+
+**用途**：债券计算分组枚举，校验 Assump 的 `BOND_TYPE1` 列。它是独立的计算属性，不是 `ASSET_CLASS → ASSET_CATEGORY` 之外的第三层分类，也不替代原 `BOND_TYPE`。
+
+| KEY | VALUE | 说明 |
+|-----|-------|------|
+| 1 | `TRAD` | 计入 BOND_TRAD |
+| 2 | `ALT` | 计入 BOND_ALT |
+| 3 | `NONE` | 不计入上述两组 |
 
 ---
 
@@ -620,7 +642,7 @@ for each category:
 
 ```
 BOND_TRAD[i] = Σ NAR_FI[i, category]
-               for category in {AC, IG_Tradable, HY, Securitized_CMBS}
+               where Table("Assump", "Y", category, "BOND_TYPE1") == "TRAD"
 ```
 
 ---
@@ -629,7 +651,7 @@ BOND_TRAD[i] = Σ NAR_FI[i, category]
 
 ```
 BOND_ALT[i] = Σ NAR_FI[i, category]
-              for category in {Loan_Private_Credit}
+              where Table("Assump", "Y", category, "BOND_TYPE1") == "ALT"
 ```
 
 ---

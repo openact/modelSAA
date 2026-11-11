@@ -155,6 +155,10 @@ inputpaths:
 
 原 `Assump.fac` 的 `CLASS` 列改名为 `ASSET_CLASS`：`Fixed_Income → Bond`，`Other_Asset → Others`，`Alternatives` 及其余分组保留。映射不改变 category 级公式、财务分组或输出。
 
+`BOND_TYPE1.csv` 定义独立的债券计算分组 TRAD / ALT / NONE，Assump 的同名列配置每个 category 的归属，不增加资产分类层级，也不替代原 `BOND_TYPE`。TRAD 初始包含 AC、IG_Tradable、HY、Securitized_CMBS；ALT 仅包含 Loan_Private_Credit；其余显式填 NONE，不允许留空。所有取值均按枚举校验，名称匹配不区分大小写。
+
+`BOND_TRAD` / `BOND_ALT` 按配置汇总 `NAR_FI`，不再在代码中维护 category 名单。初始映射保持原有结果；调整此列会影响债券久期及相关利率、信用利差风险计算。分组可以没有成员，对应汇总为 0。
+
 ## 4.2 input/runsettings/runsettings.yaml — run 清单
 
 每个 run 是一次完整的预测执行单元，程序按顺序逐一运行。

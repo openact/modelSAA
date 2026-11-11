@@ -83,17 +83,16 @@ var PCR_SPD = formulae.RegisterScalarNum(formulae.Registry, "default", "PCR_SPD"
 })
 
 var BOND_TRAD = formulae.RegisterScalarNum(formulae.Registry, "default", "BOND_TRAD", func(ctx *formulae.ProjContext, i int, dims ...int) (val float64) {
-	//AC,IG_Tradable,HY,Securitized_CMBS
-	val = formulae.ArraySumIf(ctx, i, NAR_FI, "ASSET_CATEGORY", "AC") +
-		formulae.ArraySumIf(ctx, i, NAR_FI, "ASSET_CATEGORY", "IG_Tradable") +
-		formulae.ArraySumIf(ctx, i, NAR_FI, "ASSET_CATEGORY", "HY") +
-		formulae.ArraySumIf(ctx, i, NAR_FI, "ASSET_CATEGORY", "Securitized_CMBS")
+	val = arraySumByAssetCategory(ctx, i, NAR_FI, func(spec assetCategorySpec) bool {
+		return spec.BondType1 == "TRAD"
+	})
 	return
 })
 
 var BOND_ALT = formulae.RegisterScalarNum(formulae.Registry, "default", "BOND_ALT", func(ctx *formulae.ProjContext, i int, dims ...int) (val float64) {
-	//Loan_Private_Credit
-	val = formulae.ArraySumIf(ctx, i, NAR_FI, "ASSET_CATEGORY", "Loan_Private_Credit")
+	val = arraySumByAssetCategory(ctx, i, NAR_FI, func(spec assetCategorySpec) bool {
+		return spec.BondType1 == "ALT"
+	})
 	return
 })
 

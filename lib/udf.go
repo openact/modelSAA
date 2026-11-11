@@ -3,7 +3,20 @@ package lib
 import (
 	"math"
 	"strconv"
+
+	"github.com/openact/formulae"
 )
+
+func arraySumByAssetCategory(ctx *formulae.ProjContext, t int, arrayFormula *formulae.Formula, include func(assetCategorySpec) bool) float64 {
+	specs := getAssetCategorySpecs(ctx)
+	sum := 0.0
+	for _, category := range specs.categoryOrder {
+		if include(specs.byCategory[category]) {
+			sum += formulae.ArraySumIf(ctx, t, arrayFormula, "ASSET_CATEGORY", category)
+		}
+	}
+	return sum
+}
 
 func MULT(integer int, mutiple int) bool {
 	return integer%mutiple == 0

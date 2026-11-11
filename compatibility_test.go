@@ -85,6 +85,10 @@ func TestSAAConfiguredRunsPreserveFinancialResults(t *testing.T) {
 				[]string{"Cash", "Bond", "Equity", "Alternatives", "Others", "Dummy"}) {
 				t.Fatal("ASSET_CLASS must define the six configured asset classes")
 			}
+			bondTypes1 := setting.Enums["BOND_TYPE1"]
+			if bondTypes1 == nil || !reflect.DeepEqual(bondTypes1.Values(), []string{"TRAD", "ALT", "NONE"}) {
+				t.Fatal("BOND_TYPE1 must define TRAD, ALT and NONE")
+			}
 			mappingContext := formulae.NewProjContext(setting, "1", "ALM", &formulae.ModelPoint{})
 			wantClasses := []string{
 				"Bond", "Bond", "Bond", "Bond", "Equity", "Equity", "Equity",
@@ -95,6 +99,15 @@ func TestSAAConfiguredRunsPreserveFinancialResults(t *testing.T) {
 			for i, category := range wantCategories {
 				if got := lib.AssetClassByCategory(mappingContext, category); got != wantClasses[i] {
 					t.Fatalf("class for %s = %s, want %s", category, got, wantClasses[i])
+				}
+				wantBondType1 := "NONE"
+				if i < 4 {
+					wantBondType1 = "TRAD"
+				} else if category == "Loan_Private_Credit" {
+					wantBondType1 = "ALT"
+				}
+				if got := mappingContext.ReadTableTxt("Assump", "Y", category, "BOND_TYPE1"); got != wantBondType1 {
+					t.Fatalf("bond type1 for %s = %s, want %s", category, got, wantBondType1)
 				}
 			}
 			for _, column := range setting.Tables["assump"].ColKeys {

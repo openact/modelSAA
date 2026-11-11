@@ -29,9 +29,13 @@ func assetMappingContext(t *testing.T, content string) *formulae.ProjContext {
 	for i, value := range []string{"Cash", "Bond", "Equity", "Alternatives", "Others", "Dummy"} {
 		classes.Add(i+1, value, "")
 	}
+	bondTypes1 := enum.NewEnum("BOND_TYPE1")
+	for i, value := range []string{"TRAD", "ALT", "NONE"} {
+		bondTypes1.Add(i+1, value, "")
+	}
 	return formulae.NewProjContext(&formulae.Setting{
 		Global: &formulae.Global{},
-		Enums:  map[string]*enum.Enum{"ASSET_CATEGORY": categories, "ASSET_CLASS": classes},
+		Enums:  map[string]*enum.Enum{"ASSET_CATEGORY": categories, "ASSET_CLASS": classes, "BOND_TYPE1": bondTypes1},
 		Tables: formulae.Tables{"assump": table},
 	}, "1", "ALM", &formulae.ModelPoint{})
 }
@@ -47,19 +51,22 @@ func expectAssetMappingPanic(t *testing.T, want string, fn func()) {
 }
 
 func TestAssetClassByCategoryCanonicalizesAndCaches(t *testing.T) {
-	ctx := assetMappingContext(t, "!2,ASSET_CATEGORY,ASSET_CLASS\n*,ig_tradable,bOnD\n*,cash,cAsH\n")
+	ctx := assetMappingContext(t, "!2,ASSET_CATEGORY,ASSET_CLASS,BOND_TYPE1\n*,ig_tradable,bOnD,tRaD\n*,cash,cAsH,nOnE\n")
 	if got := AssetClassByCategory(ctx, "IG_Tradable"); got != "Bond" {
 		t.Fatalf("class = %s, want Bond", got)
 	}
-	if got := assetCategoryByValue(ctx, "Cash"); got != (assetCategorySpec{Category: "Cash", Class: "Cash"}) {
+	if got := assetCategoryByValue(ctx, "Cash"); got != (assetCategorySpec{Category: "Cash", Class: "Cash", BondType1: "NONE"}) {
 		t.Fatalf("spec = %+v", got)
+	}
+	if got := assetCategoryByValue(ctx, "IG_Tradable").BondType1; got != "TRAD" {
+		t.Fatalf("bond type = %s, want TRAD", got)
 	}
 	delete(ctx.Setting.Tables, "assump")
 	ctx.Cache.Tick(1)
 	if got := AssetClassByCategory(ctx, "IG_Tradable"); got != "Bond" {
 		t.Fatalf("cached class = %s, want Bond", got)
 	}
-	other := assetMappingContext(t, "!2,ASSET_CATEGORY,ASSET_CLASS\n*,IG_Tradable,Alternatives\n*,Cash,Cash\n")
+	other := assetMappingContext(t, "!2,ASSET_CATEGORY,ASSET_CLASS,BOND_TYPE1\n*,IG_Tradable,Alternatives,ALT\n*,Cash,Cash,NONE\n")
 	if got := AssetClassByCategory(other, "IG_Tradable"); got != "Alternatives" {
 		t.Fatalf("independent context class = %s, want Alternatives", got)
 	}
@@ -74,12 +81,15 @@ func TestLoadAssetCategorySpecsRejectsInvalidMappings(t *testing.T) {
 		content string
 		want    string
 	}{
-		{"missing category", "!2,ASSET_CATEGORY,ASSET_CLASS\n*,IG_Tradable,Bond\n", "missing ASSET_CATEGORY configuration: Cash"},
-		{"unknown category", "!2,ASSET_CATEGORY,ASSET_CLASS\n*,Unknown,Bond\n", "unknown ASSET_CATEGORY configuration: unknown"},
-		{"empty category", "!2,ASSET_CATEGORY,ASSET_CLASS\n*,,Bond\n", "unknown ASSET_CATEGORY configuration:"},
-		{"empty class", "!2,ASSET_CATEGORY,ASSET_CLASS\n*,IG_Tradable,\n*,Cash,Cash\n", "invalid ASSET_CLASS for IG_Tradable:"},
-		{"unknown class", "!2,ASSET_CATEGORY,ASSET_CLASS\n*,IG_Tradable,Fixed_Income\n*,Cash,Cash\n", "invalid ASSET_CLASS for IG_Tradable: Fixed_Income"},
-		{"missing column", "!2,ASSET_CATEGORY,CLASS\n*,IG_Tradable,Bond\n*,Cash,Cash\n", "ASSET_CLASS"},
+		{"missing category", "!2,ASSET_CATEGORY,ASSET_CLASS,BOND_TYPE1\n*,IG_Tradable,Bond,TRAD\n", "missing ASSET_CATEGORY configuration: Cash"},
+		{"unknown category", "!2,ASSET_CATEGORY,ASSET_CLASS,BOND_TYPE1\n*,Unknown,Bond,TRAD\n", `invalid ASSET_CATEGORY value "unknown"`},
+		{"empty category", "!2,ASSET_CATEGORY,ASSET_CLASS,BOND_TYPE1\n*,,Bond,TRAD\n", `invalid ASSET_CATEGORY value ""`},
+		{"empty class", "!2,ASSET_CATEGORY,ASSET_CLASS,BOND_TYPE1\n*,IG_Tradable,,TRAD\n*,Cash,Cash,NONE\n", `invalid ASSET_CLASS value ""`},
+		{"unknown class", "!2,ASSET_CATEGORY,ASSET_CLASS,BOND_TYPE1\n*,IG_Tradable,Fixed_Income,TRAD\n*,Cash,Cash,NONE\n", `ASSET_CATEGORY "IG_Tradable": record 1, field Class: invalid ASSET_CLASS value "Fixed_Income"`},
+		{"missing class column", "!2,ASSET_CATEGORY,CLASS,BOND_TYPE1\n*,IG_Tradable,Bond,TRAD\n*,Cash,Cash,NONE\n", "ASSET_CLASS"},
+		{"missing bond type column", "!2,ASSET_CATEGORY,ASSET_CLASS\n*,IG_Tradable,Bond\n*,Cash,Cash\n", "BOND_TYPE1"},
+		{"empty bond type", "!2,ASSET_CATEGORY,ASSET_CLASS,BOND_TYPE1\n*,IG_Tradable,Bond,\n*,Cash,Cash,NONE\n", `invalid BOND_TYPE1 value ""`},
+		{"unknown bond type", "!2,ASSET_CATEGORY,ASSET_CLASS,BOND_TYPE1\n*,IG_Tradable,Bond,IG\n*,Cash,Cash,NONE\n", `invalid BOND_TYPE1 value "IG"`},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := assetMappingContext(t, tt.content)
@@ -89,8 +99,8 @@ func TestLoadAssetCategorySpecsRejectsInvalidMappings(t *testing.T) {
 }
 
 func TestLoadAssetCategorySpecsRequiresEnumsAndTable(t *testing.T) {
-	const valid = "!2,ASSET_CATEGORY,ASSET_CLASS\n*,IG_Tradable,Bond\n*,Cash,Cash\n"
-	for _, name := range []string{"ASSET_CLASS", "ASSET_CATEGORY"} {
+	const valid = "!2,ASSET_CATEGORY,ASSET_CLASS,BOND_TYPE1\n*,IG_Tradable,Bond,TRAD\n*,Cash,Cash,NONE\n"
+	for _, name := range []string{"ASSET_CLASS", "ASSET_CATEGORY", "BOND_TYPE1"} {
 		t.Run("missing "+name, func(t *testing.T) {
 			ctx := assetMappingContext(t, valid)
 			delete(ctx.Setting.Enums, name)
@@ -117,12 +127,47 @@ func TestLoadAssetCategorySpecsRequiresEnumsAndTable(t *testing.T) {
 
 func TestAssumpTableRejectsDuplicateCategory(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "Assump.fac")
-	content := "!2,ASSET_CATEGORY,ASSET_CLASS\n*,IG_Tradable,Bond\n*,ig_tradable,Equity\n"
+	content := "!2,ASSET_CATEGORY,ASSET_CLASS,BOND_TYPE1\n*,IG_Tradable,Bond,TRAD\n*,ig_tradable,Equity,NONE\n"
 	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 		t.Fatal(err)
 	}
+
 	if _, err := cache.LoadTable(path, cache.LoadOptions{SuppressLoadLog: true}); err == nil ||
 		!strings.Contains(err.Error(), "duplicate row key") {
 		t.Fatalf("error = %v, want duplicate row key", err)
+	}
+}
+
+func TestBondFormulasFollowConfiguredGroups(t *testing.T) {
+	for _, tt := range []struct {
+		name          string
+		tradableType1 string
+		cashType1     string
+		wantTrad      float64
+		wantAlt       float64
+	}{
+		{"original grouping", "TRAD", "NONE", 10, 0},
+		{"reassigned categories", "ALT", "TRAD", 20, 10},
+		{"combined group", "TRAD", "TRAD", 30, 0},
+		{"no bond groups", "NONE", "NONE", 0, 0},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			content := fmt.Sprintf("!2,ASSET_CATEGORY,ASSET_CLASS,BOND_TYPE1\n*,Cash,Cash,%s\n*,IG_Tradable,Bond,%s\n",
+				tt.cashType1, tt.tradableType1)
+			ctx := assetMappingContext(t, content)
+			if err := NAR_FI.InitializeWithEnums(ctx.Setting); err != nil {
+				t.Fatal(err)
+			}
+			ctx.ResultsStore.NumData[formulae.ExpandVarName("NAR_FI", []int{1})] = []float64{10, 100}
+			ctx.ResultsStore.NumData[formulae.ExpandVarName("NAR_FI", []int{2})] = []float64{20, 200}
+			for step, scale := range []float64{1, 10} {
+				if got := BOND_TRAD.NumFunc(ctx, step, nil); got != tt.wantTrad*scale {
+					t.Fatalf("BOND_TRAD[%d] = %g, want %g", step, got, tt.wantTrad*scale)
+				}
+				if got := BOND_ALT.NumFunc(ctx, step, nil); got != tt.wantAlt*scale {
+					t.Fatalf("BOND_ALT[%d] = %g, want %g", step, got, tt.wantAlt*scale)
+				}
+			}
+		})
 	}
 }
