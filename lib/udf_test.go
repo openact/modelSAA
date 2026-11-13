@@ -35,7 +35,9 @@ func TestArraySumByAssetCategory(t *testing.T) {
 
 func TestArraySumByAssetCategoryPreservesEnumOrder(t *testing.T) {
 	ctx := assetMappingContext(t, "!2,ASSET_CATEGORY,ASSET_CLASS,BOND_TYPE1\n*,Cash,Cash,TRAD\n*,Other_Asset,Others,TRAD\n*,IG_Tradable,Bond,TRAD\n")
-	ctx.Setting.Enums["ASSET_CATEGORY"].Add(3, "Other_Asset", "")
+	if err := ctx.Setting.Enums["ASSET_CATEGORY"].Add(3, "Other_Asset", ""); err != nil {
+		t.Fatal(err)
+	}
 	if err := NAR_TOT.InitializeWithEnums(ctx.Setting); err != nil {
 		t.Fatal(err)
 	}

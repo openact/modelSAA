@@ -23,15 +23,23 @@ func assetMappingContext(t *testing.T, content string) *formulae.ProjContext {
 		t.Fatal(err)
 	}
 	categories := enum.NewEnum("ASSET_CATEGORY")
-	categories.Add(1, "IG_Tradable", "")
-	categories.Add(2, "Cash", "")
+	if err := categories.Add(1, "IG_Tradable", ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := categories.Add(2, "Cash", ""); err != nil {
+		t.Fatal(err)
+	}
 	classes := enum.NewEnum("ASSET_CLASS")
 	for i, value := range []string{"Cash", "Bond", "Equity", "Alternatives", "Others", "Dummy"} {
-		classes.Add(i+1, value, "")
+		if err := classes.Add(i+1, value, ""); err != nil {
+			t.Fatal(err)
+		}
 	}
 	bondTypes1 := enum.NewEnum("BOND_TYPE1")
 	for i, value := range []string{"TRAD", "ALT", "NONE"} {
-		bondTypes1.Add(i+1, value, "")
+		if err := bondTypes1.Add(i+1, value, ""); err != nil {
+			t.Fatal(err)
+		}
 	}
 	return formulae.NewProjContext(&formulae.Setting{
 		Global: &formulae.Global{},
@@ -114,7 +122,9 @@ func TestLoadAssetCategorySpecsRequiresEnumsAndTable(t *testing.T) {
 		t.Run("ambiguous "+name, func(t *testing.T) {
 			ctx := assetMappingContext(t, valid)
 			e := ctx.Setting.Enums[name]
-			e.Add(e.Size()+1, strings.ToLower(e.Values()[0]), "")
+			if err := e.Add(e.Size()+1, strings.ToLower(e.Values()[0]), ""); err != nil {
+				t.Fatal(err)
+			}
 			expectAssetMappingPanic(t, "ambiguous enum values in "+name, func() { loadAssetCategorySpecs(ctx) })
 		})
 	}
