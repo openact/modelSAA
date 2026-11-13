@@ -7,7 +7,7 @@ import (
 	"github.com/openact/formulae"
 )
 
-func arraySumByAssetCategory(ctx *formulae.ProjContext, t int, arrayFormula *formulae.Formula, include func(assetCategorySpec) bool) float64 {
+func arraySumByAssetCategory(ctx *formulae.ProjContext, t int, arrayFormula *formulae.Definition, include func(assetCategorySpec) bool) float64 {
 	specs := getAssetCategorySpecs(ctx)
 	sum := 0.0
 	for _, category := range specs.categoryOrder {
