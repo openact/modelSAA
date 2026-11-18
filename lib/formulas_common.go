@@ -2,7 +2,7 @@ package lib
 
 import "github.com/openact/formulae"
 
-var CALENDAR_YR = formulae.RegisterScalarNum(formulae.Registry, "default", "CALENDAR_YR", func(ctx *formulae.ProjContext, i int, dims ...int) (val float64) {
+var CALENDAR_YR = formulae.RegisterScalarNum(formulae.Registry, "default", "CALENDAR_YR", func(ctx *formulae.ProjContext, i int) (val float64) {
 	s := ctx.Setting
 	//startYear := int(s.START_YEAR)
 	//startMonth := int(s.START_MONTH)
@@ -17,7 +17,7 @@ var CALENDAR_YR = formulae.RegisterScalarNum(formulae.Registry, "default", "CALE
 	return
 })
 
-var CALENDAR_MTH = formulae.RegisterScalarNum(formulae.Registry, "default", "CALENDAR_MTH", func(ctx *formulae.ProjContext, i int, dims ...int) (val float64) {
+var CALENDAR_MTH = formulae.RegisterScalarNum(formulae.Registry, "default", "CALENDAR_MTH", func(ctx *formulae.ProjContext, i int) (val float64) {
 	s := ctx.Setting
 	//startMth := int(s.START_MONTH)
 	startMth := s.GetParameter("startMonth")
@@ -27,7 +27,7 @@ var CALENDAR_MTH = formulae.RegisterScalarNum(formulae.Registry, "default", "CAL
 	return
 })
 
-var CALENDAR_DATE = formulae.RegisterScalarNum(formulae.Registry, "default", "CALENDAR_DATE", func(ctx *formulae.ProjContext, i int, dims ...int) (val float64) {
+var CALENDAR_DATE = formulae.RegisterScalarNum(formulae.Registry, "default", "CALENDAR_DATE", func(ctx *formulae.ProjContext, i int) (val float64) {
 	rs := ctx.ResultsStore
 	val = rs.GetNum("CALENDAR_YR", i)*100 + rs.GetNum("CALENDAR_MTH", i)
 	return
