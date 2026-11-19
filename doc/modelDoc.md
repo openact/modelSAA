@@ -6,7 +6,7 @@
 
 ## 引擎适配与汇总层级
 
-当前结构仅包含 `ALM` 产品（`RiskCalc`），没有 preload 或 accumulation 组件。
+当前结构仅包含 `ALM` 产品（`RiskCalc`），没有 preload 或 accumulation 单元。
 每个情景独立运行所有模型点，`ASSET_MIX` 使用情景编号读取 `SAA_Sims`，
 `RC_FAC_*` 使用模型点 `PLAN_CODE` 读取 `Param`；本次适配不修改这些输入键和财务公式。
 
@@ -80,11 +80,13 @@ run 根目录，min/max 位于 `stats`，共用 run 级 catalog/completion；
 
 映射沿用原 Assump 分组，将 `Fixed_Income` 统一为 `Bond`、`Other_Asset` 统一为 `Others`，保留 `Alternatives`，不按类别名称重新归类。
 
-代码使用 `rowkey` / `colkey` 结构体加载配置，在每个投影上下文中懒初始化并缓存。枚举属性显式标注 `enum:"枚举名"`，统一交给 `kit/enum.NormalizeFields` 校验和规范化；新增枚举属性无需复制逐字段校验代码。模型层仅保留 category 唯一性、完整性校验及索引构建。
-`ASSET_MIX` 首次计算时触发全表校验；缺失、重复、未知 category、空值、非法 class 或非法 `BOND_TYPE1` 均明确报错，不默认归入 Others 或 NONE。
-表中的名称按大小写不敏感方式匹配并规范为 enum 的 VALUE；查询接口 `AssetClassByCategory(ctx, category)` 使用规范的 category VALUE。
-`kit/enum.NewNormalizer` 提供可独立复用的枚举标准化快照；tag 适配器只共享结构体字段元信息，不共享不同 run 的枚举数据，也不依赖 FAC 或 ProjContext。反射只在初始化时执行。字段错误包含文件、category 行键、记录序号、字段、枚举及原值；记录序号不是包含注释和表头的物理文件行号。
-允许 class 或债券计算分组暂无 category。假设加载层统一用 `byCategory` 保存属性，仅额外缓存通用的 category 枚举顺序，不为 BondType1 或 Class 维护反向分组索引。`udf.go` 的 `arraySumByAssetCategory` 按该顺序读取属性、应用筛选条件，并复用引擎 `ArraySumIf` 求和；同一机制可按 Class、BondType1 等属性筛选任意包含 `ASSET_CATEGORY` 维度的数值数组。公式层以 `spec.BondType1 == "TRAD"` / `"ALT"` 筛选 `NAR_FI`，计算 `BOND_TRAD` / `BOND_ALT`，不直接按 class 汇总。
+Assump 通过 `globals.preindexedFiles: {Assump: true}` 在引擎加载时预解析行字段，公式直接调用 `ReadTableTxt` / `ReadTableNum`，不建立模型记录结构体、额外索引或投影缓存。分类查询同样直接读取，例如 `ctx.ReadTableTxt("Assump", "Y", category, "ASSET_CLASS")`。
+
+严格读表 `"Y"` 在表、行或列不存在时明确报错；FAC 加载器继续拒绝重复行键。表名、行键、列名的查找不区分大小写，但返回的文本 VALUE 保持表中写法，不做枚举大小写规范化。
+
+输入应使用枚举的标准 VALUE。模型不在执行时检查分类是否为空、是否属于指定枚举，也不执行 category 全表覆盖或额外行检查；这些要求属于输入准备责任。空文本不是缺失单元格，不会仅因严格读取而报错。`ASSET_MIX` 只读取 SAA_Sims 权重，不再触发 Assump 校验。
+
+允许 class 或债券计算分组暂无 category。BOND_TRAD / BOND_ALT 使用 `ctx.ResultsStore.SumWhere("NAR_FI", i, "ASSET_CATEGORY", include)`，按单元结果 schema 中 ASSET_CATEGORY 的 KEY 顺序遍历并累加各选中分类的小计，不分配 categoryOrder 切片。筛选条件直接读取 Assump 的 BOND_TYPE1，以精确文本 `"TRAD"` / `"ALT"` 比较，不直接按 class 汇总。`"trad"` 等非标准写法不会自动转换，也不会匹配 TRAD；汇总为 0 不代表分类通过了枚举校验。全部向量求和和轴值匹配分别使用 ResultsStore.Sum / SumIf，显式传入结果基础变量名和时点，不重新执行来源公式。
 
 | BOND_TYPE1 | 初始 ASSET_CATEGORY |
 |------------|---------------------|
@@ -262,7 +264,7 @@ run 根目录，min/max 位于 `stats`，共用 run 级 catalog/completion；
 
 ## ASSET_CLASS.csv
 
-**用途**：资产大类枚举，用于校验 `Assump.fac` 的 `ASSET_CLASS` 列；不替代现有 category 级向量维度，不新增大类汇总输出。
+**用途**：定义资产大类的标准 VALUE，供 `Assump.fac` 的 `ASSET_CLASS` 列配置使用；当前公式直接读表，不自动校验字段成员关系。不替代 category 级向量维度，不新增大类汇总输出。
 
 | KEY | VALUE | 说明 |
 |-----|-------|------|
@@ -277,7 +279,7 @@ run 根目录，min/max 位于 `stats`，共用 run 级 catalog/completion；
 
 ## BOND_TYPE1.csv
 
-**用途**：债券计算分组枚举，校验 Assump 的 `BOND_TYPE1` 列。它是独立的计算属性，不是 `ASSET_CLASS → ASSET_CATEGORY` 之外的第三层分类，也不替代原 `BOND_TYPE`。
+**用途**：定义 Assump 的 `BOND_TYPE1` 列应使用的分组 VALUE，输入准备时须保证正确，公式按文本直接比较。它是独立的计算属性，不是 `ASSET_CLASS → ASSET_CATEGORY` 之外的第三层分类，也不替代原 `BOND_TYPE`。
 
 | KEY | VALUE | 说明 |
 |-----|-------|------|
@@ -1020,16 +1022,3 @@ if intBitingScen == "INT_UP":
 elif intBitingScen == "INT_DN":
     PCR_TOTAL[i] = ArrayAggregateByCorr("MKT_RISK_CORR_INTDN", PCR_MKT_RISK[i])
 ```
-
----
-
-## 附：辅助函数（udf.go）
-
-| 函数 | 说明 |
-|------|------|
-| `MULT(n, m)` | `n mod m == 0` |
-| `Text(x)` | 数值/字符串转字符串 |
-| `MonthlyRate(r)` | 年利率转月利率：`(1 + r/100)^(1/12) - 1` |
-| `round4(x)` | 四舍五入保留 4 位小数 |
-| `tIdx(sY, sM, cY, cM)` | 起始年月到当前年月的月数：`(cY-sY)*12 + (cM-sM)` |
-| `Idx(dims, k)` | 安全取 dims 第 k 个元素（越界返回 0） |

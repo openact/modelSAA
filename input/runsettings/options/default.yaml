@@ -4,5 +4,5 @@ globals:
     outputStep: "true"
     groupBy: [SP_CODE, ACCUM]
     statistics:
-      - component: ALM
+      - unit: ALM
         views: [SP_CODE]

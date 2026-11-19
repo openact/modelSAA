@@ -92,7 +92,7 @@ modelSAA/
            并发预测（每个 simulation 独立运行）
            └─ 写逐模型点结果（storedVariables，可选）
               按 groupBy 分别汇总产品结果（aggregatedVariables）
-              对 statistics 选中的组件/视图计算跨情景 average/min/max
+              对 statistics 选中的单元/视图计算跨情景 average/min/max
               分组与统计文件仅导出 storedVariables 中的汇总变量
               全部成功后发布 run 级 metadata 与 completion
 ```
@@ -119,8 +119,8 @@ outputpaths:
 ```
 
 `StructureALM.csv` 使用列 `Name,Kind,Factory,Description,PreloadFrom,PreloadField,Priority`。
-当前只有 `ALM` 产品，工厂为 `RiskCalc`，没有 preload 或 accumulation 组件。
-`ACCUM` 输出是该产品的独立分组视图，不代表另一个组件。
+当前只有 `ALM` 产品，工厂为 `RiskCalc`，没有 preload 或 accumulation 单元。
+`ACCUM` 输出是该产品的独立分组视图，不代表另一个单元。
 
 ## 3.2 config/variablesets/ — 输出变量集
 
@@ -151,11 +151,11 @@ inputpaths:
 
 资产分类仅有两级：`ASSET_CLASS.csv` 定义 Cash、Bond、Equity、Alternatives、Others、Dummy，`ASSET_CATEGORY.csv` 保留现有细类。`input/tables/Assump.fac` 以 category 为行键，`ASSET_CLASS` 列定义细类归属，与其他资产假设集中在同一张表中，不需要独立映射表或额外的 filenames 注册。
 
-新增 category 时，须同步更新 category 枚举、Assump、SAA_Sims 和资产相关矩阵；仅调整大类归属时，修改 Assump 的 `ASSET_CLASS` 列即可。Assump 必须覆盖全部 category 且每个 category 仅出现一次，class 必须属于大类枚举；名称匹配不区分大小写，空值和非法配置会报错。class 可以暂时没有细类。
+新增 category 时，须同步更新 category 枚举、Assump、SAA_Sims 和资产相关矩阵；仅调整大类归属时，修改 Assump 的 `ASSET_CLASS` 列即可。输入准备应保证 Assump 覆盖所需 category、class 使用大类枚举的标准 VALUE。公式直接严格读表，不执行整表覆盖、额外 category、空文本或字段枚举成员关系校验；缺失表或单元格报错，重复行键由加载器拒绝。class 可以暂时没有细类。
 
 原 `Assump.fac` 的 `CLASS` 列改名为 `ASSET_CLASS`：`Fixed_Income → Bond`，`Other_Asset → Others`，`Alternatives` 及其余分组保留。映射不改变 category 级公式、财务分组或输出。
 
-`BOND_TYPE1.csv` 定义独立的债券计算分组 TRAD / ALT / NONE，Assump 的同名列配置每个 category 的归属，不增加资产分类层级，也不替代原 `BOND_TYPE`。TRAD 初始包含 AC、IG_Tradable、HY、Securitized_CMBS；ALT 仅包含 Loan_Private_Credit；其余显式填 NONE，不允许留空。所有取值均按枚举校验，名称匹配不区分大小写。
+`BOND_TYPE1.csv` 定义独立的债券计算分组 TRAD / ALT / NONE，Assump 的同名列配置每个 category 的归属，不增加资产分类层级，也不替代原 `BOND_TYPE`。TRAD 初始包含 AC、IG_Tradable、HY、Securitized_CMBS；ALT 仅包含 Loan_Private_Credit；其余应显式填 NONE。表名、行键及列名查找不区分大小写，但返回的分类文本不做规范化；BOND_TYPE1 按 `"TRAD"` / `"ALT"` 精确比较，`"trad"` 不匹配。运行时不自动验证其枚举归属。
 
 `BOND_TRAD` / `BOND_ALT` 按配置汇总 `NAR_FI`，不再在代码中维护 category 名单。初始映射保持原有结果；调整此列会影响债券久期及相关利率、信用利差风险计算。分组可以没有成员，对应汇总为 0。
 
@@ -209,13 +209,17 @@ globals:
     RF_Curves:                       RF_Curves
     SAA_Sims:                        SAA_Sims
     StressBondSpdByRatingByTerm:     StressBondSpdByRatingByTerm
+  preindexedFiles:
+    Assump: true
 ```
+
+preindexedFiles 使用逻辑表名，将 Assump 行字段在加载时预解析，避免直接读取时重复拆解行数据；不提供字段枚举校验或另一套模型缓存。新增分类字段时公式可直接读表，无需生成记录加载、索引或首次校验机制。
 
 **逻辑表名与对应变量的关系**：
 
 | 逻辑表名 | 用于变量 | 内容 |
 |---------|---------|------|
-| `Assump` | `ASSET_RETURN_RATE`, `ASSET_SD_RATE`, `ASSET_MSCI_MIX`, `NAR_*`, `RC_ASSET_*` 等；`ASSET_MIX` 首次计算时校验分类映射 | 资产假设及 category 到 class 的映射（`AssetClassByCategory` 查询） |
+| `Assump` | `ASSET_RETURN_RATE`, `ASSET_SD_RATE`, `ASSET_MSCI_MIX`, `NAR_*`, `RC_ASSET_*`、`BOND_TRAD` / `BOND_ALT` 等 | 直接读取预索引资产假设；大类直接读取 ASSET_CLASS 列，无隐式全表校验 |
 | `Param` | `RC_FAC_HKD`, `RC_FAC_USD`, `RC_FAC_CNY`, `RC_FAC_MSCI` | 时间步级风险资本因子 |
 | `SAA_Sims` | `ASSET_MIX` | SAA 权重（按情景） |
 | `RF_Curves` | `RF_ECON_SCENARIO`, `HKD_BOND_MV_CHG`, `USD_BOND_MV_CHG` | 无风险利率曲线 |
@@ -282,7 +286,7 @@ globals:
     outputStep: "true"
     groupBy: [SP_CODE, ACCUM]
     statistics:
-      - component: ALM
+      - unit: ALM
         views: [SP_CODE]
 ```
 

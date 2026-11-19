@@ -11,3 +11,5 @@ globals:
     RF_Curves: RF_Curves
     SAA_Sims: SAA_Sims
     StressBondSpdByRatingByTerm: StressBondSpdByRatingByTerm
+  preindexedFiles:
+    Assump: true

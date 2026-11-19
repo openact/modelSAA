@@ -4,8 +4,6 @@ import "github.com/openact/formulae"
 
 var CALENDAR_YR = formulae.RegisterScalarNum(formulae.Registry, "default", "CALENDAR_YR", func(ctx *formulae.ProjContext, i int) (val float64) {
 	s := ctx.Setting
-	//startYear := int(s.START_YEAR)
-	//startMonth := int(s.START_MONTH)
 	startYear := s.GetParameter("startYear")
 	startMonth := s.GetParameter("startMonth")
 
@@ -19,7 +17,6 @@ var CALENDAR_YR = formulae.RegisterScalarNum(formulae.Registry, "default", "CALE
 
 var CALENDAR_MTH = formulae.RegisterScalarNum(formulae.Registry, "default", "CALENDAR_MTH", func(ctx *formulae.ProjContext, i int) (val float64) {
 	s := ctx.Setting
-	//startMth := int(s.START_MONTH)
 	startMth := s.GetParameter("startMonth")
 
 	currentMth := (startMth-1+i)%12 + 1

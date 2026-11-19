@@ -19,17 +19,17 @@ var PORT_RISK = formulae.RegisterScalarNum(formulae.Registry, "default", "PORT_R
 	})
 
 var PORT_NAR_HKD = formulae.RegisterScalarNum(formulae.Registry, "default", "PORT_NAR_HKD", func(ctx *formulae.ProjContext, i int) (val float64) {
-	val = formulae.ArraySum(ctx, i, NAR_TOT_HKD)
+	val = ctx.ResultsStore.Sum("NAR_TOT_HKD", i)
 	return
 })
 
 var PORT_NAR_USD = formulae.RegisterScalarNum(formulae.Registry, "default", "PORT_NAR_USD", func(ctx *formulae.ProjContext, i int) (val float64) {
-	val = formulae.ArraySum(ctx, i, NAR_TOT_USD)
+	val = ctx.ResultsStore.Sum("NAR_TOT_USD", i)
 	return
 })
 
 var PORT_NAR_MSCI = formulae.RegisterScalarNum(formulae.Registry, "default", "PORT_NAR_MSCI", func(ctx *formulae.ProjContext, i int) (val float64) {
-	val = formulae.ArraySum(ctx, i, NAR_TOT_MSCI)
+	val = ctx.ResultsStore.Sum("NAR_TOT_MSCI", i)
 	return
 })
 
@@ -60,14 +60,12 @@ var PCR_FX = formulae.RegisterScalarNum(formulae.Registry, "default", "PCR_FX", 
 var PCR_EQ = formulae.RegisterScalarNum(formulae.Registry, "default", "PCR_EQ", func(ctx *formulae.ProjContext, i int) (val float64) {
 	lacFac := ctx.Mp.Num("LAC_EQ_FAC")
 	lacFixAmt := ctx.Mp.Num("LAC_EQ_AMT")
-	val = formulae.ArraySum(ctx, i, RC_ASSET_EQ)*(1-lacFac) + lacFixAmt
-	//rs := ctx.ResultsStore
-	//val = formulae.ArraySum(ctx, i, RC_ASSET_EQ)*(1-lacFac*rs.GetNum("LIAB_TO_ASSET_RATIO", i)) + lacFixAmt
+	val = ctx.ResultsStore.Sum("RC_ASSET_EQ", i)*(1-lacFac) + lacFixAmt
 	return
 })
 
 var PCR_PROP = formulae.RegisterScalarNum(formulae.Registry, "default", "PCR_PROP", func(ctx *formulae.ProjContext, i int) (val float64) {
-	val = formulae.ArraySum(ctx, i, RC_ASSET_PROP)
+	val = ctx.ResultsStore.Sum("RC_ASSET_PROP", i)
 	return
 })
 
@@ -75,23 +73,21 @@ var PCR_SPD = formulae.RegisterScalarNum(formulae.Registry, "default", "PCR_SPD"
 
 	lacFac := ctx.Mp.Num("LAC_CS_FAC")
 	lacFixAmt := ctx.Mp.Num("LAC_CS_AMT")
-	base := -formulae.ArraySum(ctx, i, PIVOT_RC_SPD_BOND)
+	base := -ctx.ResultsStore.Sum("PIVOT_RC_SPD_BOND", i)
 	val = base*(1-lacFac) + lacFixAmt
-	//rs := ctx.ResultsStore
-	//val = base*(1-lacFac*rs.GetNum("LIAB_TO_ASSET_RATIO", i)) + lacFixAmt
 	return
 })
 
 var BOND_TRAD = formulae.RegisterScalarNum(formulae.Registry, "default", "BOND_TRAD", func(ctx *formulae.ProjContext, i int) (val float64) {
-	val = arraySumByAssetCategory(ctx, i, NAR_FI, func(spec assetCategorySpec) bool {
-		return spec.BondType1 == "TRAD"
+	val = ctx.ResultsStore.SumWhere("NAR_FI", i, "ASSET_CATEGORY", func(category string) bool {
+		return ctx.ReadTableTxt("Assump", "Y", category, "BOND_TYPE1") == "TRAD"
 	})
 	return
 })
 
 var BOND_ALT = formulae.RegisterScalarNum(formulae.Registry, "default", "BOND_ALT", func(ctx *formulae.ProjContext, i int) (val float64) {
-	val = arraySumByAssetCategory(ctx, i, NAR_FI, func(spec assetCategorySpec) bool {
-		return spec.BondType1 == "ALT"
+	val = ctx.ResultsStore.SumWhere("NAR_FI", i, "ASSET_CATEGORY", func(category string) bool {
+		return ctx.ReadTableTxt("Assump", "Y", category, "BOND_TYPE1") == "ALT"
 	})
 	return
 })
@@ -117,12 +113,12 @@ var BOND_DUR_INT = formulae.RegisterScalarNum(formulae.Registry, "default", "BON
 })
 
 var SUM_NAR_FI_HKD = formulae.RegisterScalarNum(formulae.Registry, "default", "SUM_NAR_FI_HKD", func(ctx *formulae.ProjContext, i int) (val float64) {
-	val = formulae.ArraySum(ctx, i, NAR_FI_HKD)
+	val = ctx.ResultsStore.Sum("NAR_FI_HKD", i)
 	return
 })
 
 var SUM_NAR_FI_USD = formulae.RegisterScalarNum(formulae.Registry, "default", "SUM_NAR_FI_USD", func(ctx *formulae.ProjContext, i int) (val float64) {
-	val = formulae.ArraySum(ctx, i, NAR_FI_USD)
+	val = ctx.ResultsStore.Sum("NAR_FI_USD", i)
 	return
 })
 

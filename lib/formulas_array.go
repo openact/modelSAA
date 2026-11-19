@@ -8,7 +8,7 @@ import (
 var ASSET_MIX = formulae.RegisterVectorNum(formulae.Registry, "default", "ASSET_MIX",
 	func(ctx *formulae.ProjContext, i int, coord *enum.Coordinate) (val float64) {
 		sim := ctx.Sim
-		category := assetCategoryByValue(ctx, coord.DimValue("ASSET_CATEGORY")).Category
+		category := coord.DimValue("ASSET_CATEGORY")
 
 		val = ctx.ReadTableNum("SAA_Sims", "Y", sim, category)
 		return
@@ -61,7 +61,7 @@ var TRAD_BOND_MIX_BY_TERM_FOR_INT_PCR = formulae.RegisterVectorNum(formulae.Regi
 	func(ctx *formulae.ProjContext, i int, coord *enum.Coordinate) (val float64) {
 		termBand := coord.DimValue("ENUM_BOND_TERM")
 
-		val = formulae.ArraySumIf(ctx, i, TRAD_BOND_DIST_FOR_INT_PCR, "ENUM_BOND_TERM", termBand)
+		val = ctx.ResultsStore.SumIf("TRAD_BOND_DIST_FOR_INT_PCR", i, "ENUM_BOND_TERM", termBand)
 
 		return
 	}, "ENUM_BOND_TERM")
@@ -70,7 +70,7 @@ var ALT_BOND_MIX_BY_TERM = formulae.RegisterVectorNum(formulae.Registry, "defaul
 	func(ctx *formulae.ProjContext, i int, coord *enum.Coordinate) (val float64) {
 		termBand := coord.DimValue("ENUM_BOND_TERM")
 
-		val = formulae.ArraySumIf(ctx, i, ALT_BOND_DIST, "ENUM_BOND_TERM", termBand)
+		val = ctx.ResultsStore.SumIf("ALT_BOND_DIST", i, "ENUM_BOND_TERM", termBand)
 		return
 	}, "ENUM_BOND_TERM")
 
@@ -127,56 +127,56 @@ var ASSET_BAL = formulae.RegisterVectorNum(formulae.Registry, "default", "ASSET_
 	func(ctx *formulae.ProjContext, i int, coord *enum.Coordinate) (val float64) {
 		totalAsset := ctx.Mp.Num("TOT_ASSET")
 		rs := ctx.ResultsStore
-		val = totalAsset * rs.GetArrayNum("ASSET_MIX", coord, i)
+		val = totalAsset * rs.GetNum("ASSET_MIX", i, coord.Dims...)
 		return
 	}, "ASSET_CATEGORY")
 
 var NAR_TOT = formulae.RegisterVectorNum(formulae.Registry, "default", "NAR_TOT",
 	func(ctx *formulae.ProjContext, i int, coord *enum.Coordinate) (val float64) {
 		rs := ctx.ResultsStore
-		val = rs.GetArrayNum("ASSET_BAL", coord, i) * ctx.ReadTableNum("Assump", "Y", coord.DimValue("ASSET_CATEGORY"), "NAR_TOT")
+		val = rs.GetNum("ASSET_BAL", i, coord.Dims...) * ctx.ReadTableNum("Assump", "Y", coord.DimValue("ASSET_CATEGORY"), "NAR_TOT")
 		return
 	}, "ASSET_CATEGORY")
 
 var NAR_FI = formulae.RegisterVectorNum(formulae.Registry, "default", "NAR_FI",
 	func(ctx *formulae.ProjContext, i int, coord *enum.Coordinate) (val float64) {
 		rs := ctx.ResultsStore
-		val = rs.GetArrayNum("ASSET_BAL", coord, i) * ctx.ReadTableNum("Assump", "Y", coord.DimValue("ASSET_CATEGORY"), "NAR_FI")
+		val = rs.GetNum("ASSET_BAL", i, coord.Dims...) * ctx.ReadTableNum("Assump", "Y", coord.DimValue("ASSET_CATEGORY"), "NAR_FI")
 		return
 	}, "ASSET_CATEGORY")
 
 var NAR_FI_HKD = formulae.RegisterVectorNum(formulae.Registry, "default", "NAR_FI_HKD",
 	func(ctx *formulae.ProjContext, i int, coord *enum.Coordinate) (val float64) {
 		rs := ctx.ResultsStore
-		val = rs.GetArrayNum("NAR_FI", coord, i) * rs.GetArrayNum("ASSET_HKD_MIX", coord, i)
+		val = rs.GetNum("NAR_FI", i, coord.Dims...) * rs.GetNum("ASSET_HKD_MIX", i, coord.Dims...)
 		return
 	}, "ASSET_CATEGORY")
 
 var NAR_FI_USD = formulae.RegisterVectorNum(formulae.Registry, "default", "NAR_FI_USD",
 	func(ctx *formulae.ProjContext, i int, coord *enum.Coordinate) (val float64) {
 		rs := ctx.ResultsStore
-		val = rs.GetArrayNum("NAR_FI", coord, i) * rs.GetArrayNum("ASSET_USD_MIX", coord, i)
+		val = rs.GetNum("NAR_FI", i, coord.Dims...) * rs.GetNum("ASSET_USD_MIX", i, coord.Dims...)
 		return
 	}, "ASSET_CATEGORY")
 
 var NAR_EQ = formulae.RegisterVectorNum(formulae.Registry, "default", "NAR_EQ",
 	func(ctx *formulae.ProjContext, i int, coord *enum.Coordinate) (val float64) {
 		rs := ctx.ResultsStore
-		val = rs.GetArrayNum("ASSET_BAL", coord, i) * ctx.ReadTableNum("Assump", "Y", coord.DimValue("ASSET_CATEGORY"), "NAR_EQ")
+		val = rs.GetNum("ASSET_BAL", i, coord.Dims...) * ctx.ReadTableNum("Assump", "Y", coord.DimValue("ASSET_CATEGORY"), "NAR_EQ")
 		return
 	}, "ASSET_CATEGORY")
 
 var NAR_PROP = formulae.RegisterVectorNum(formulae.Registry, "default", "NAR_PROP",
 	func(ctx *formulae.ProjContext, i int, coord *enum.Coordinate) (val float64) {
 		rs := ctx.ResultsStore
-		val = rs.GetArrayNum("ASSET_BAL", coord, i) * ctx.ReadTableNum("Assump", "Y", coord.DimValue("ASSET_CATEGORY"), "NAR_PROP")
+		val = rs.GetNum("ASSET_BAL", i, coord.Dims...) * ctx.ReadTableNum("Assump", "Y", coord.DimValue("ASSET_CATEGORY"), "NAR_PROP")
 		return
 	}, "ASSET_CATEGORY")
 
 var TOT_NAR = formulae.RegisterVectorNum(formulae.Registry, "default", "TOT_NAR",
 	func(ctx *formulae.ProjContext, i int, coord *enum.Coordinate) (val float64) {
 		rs := ctx.ResultsStore
-		val = rs.GetArrayNum("NAR_FI", coord, i) + rs.GetArrayNum("NAR_EQ", coord, i) + rs.GetArrayNum("NAR_PROP", coord, i)
+		val = rs.GetNum("NAR_FI", i, coord.Dims...) + rs.GetNum("NAR_EQ", i, coord.Dims...) + rs.GetNum("NAR_PROP", i, coord.Dims...)
 		return
 	}, "ASSET_CATEGORY")
 
@@ -184,7 +184,7 @@ var RC_ASSET_EQ = formulae.RegisterVectorNum(formulae.Registry, "default", "RC_A
 	func(ctx *formulae.ProjContext, i int, coord *enum.Coordinate) (val float64) {
 		category := coord.DimValue("ASSET_CATEGORY")
 		rs := ctx.ResultsStore
-		val = rs.GetArrayNum("NAR_EQ", coord, i) * ctx.ReadTableNum("Assump", "Y", category, "RC_FAC_EQ")
+		val = rs.GetNum("NAR_EQ", i, coord.Dims...) * ctx.ReadTableNum("Assump", "Y", category, "RC_FAC_EQ")
 		return
 	}, "ASSET_CATEGORY")
 
@@ -192,36 +192,36 @@ var RC_ASSET_PROP = formulae.RegisterVectorNum(formulae.Registry, "default", "RC
 	func(ctx *formulae.ProjContext, i int, coord *enum.Coordinate) (val float64) {
 		category := coord.DimValue("ASSET_CATEGORY")
 		rs := ctx.ResultsStore
-		val = rs.GetArrayNum("NAR_PROP", coord, i) * ctx.ReadTableNum("Assump", "Y", category, "RC_FAC_PROP")
+		val = rs.GetNum("NAR_PROP", i, coord.Dims...) * ctx.ReadTableNum("Assump", "Y", category, "RC_FAC_PROP")
 		return
 	}, "ASSET_CATEGORY")
 
 var NAR_TOT_HKD = formulae.RegisterVectorNum(formulae.Registry, "default", "NAR_TOT_HKD",
 	func(ctx *formulae.ProjContext, i int, coord *enum.Coordinate) (val float64) {
 		rs := ctx.ResultsStore
-		val = rs.GetArrayNum("NAR_TOT", coord, i) * rs.GetArrayNum("ASSET_HKD_MIX", coord, i)
+		val = rs.GetNum("NAR_TOT", i, coord.Dims...) * rs.GetNum("ASSET_HKD_MIX", i, coord.Dims...)
 		return
 	}, "ASSET_CATEGORY")
 
 var NAR_TOT_USD = formulae.RegisterVectorNum(formulae.Registry, "default", "NAR_TOT_USD",
 	func(ctx *formulae.ProjContext, i int, coord *enum.Coordinate) (val float64) {
 		rs := ctx.ResultsStore
-		val = rs.GetArrayNum("NAR_TOT", coord, i) * rs.GetArrayNum("ASSET_USD_MIX", coord, i)
+		val = rs.GetNum("NAR_TOT", i, coord.Dims...) * rs.GetNum("ASSET_USD_MIX", i, coord.Dims...)
 		return
 	}, "ASSET_CATEGORY")
 
 var NAR_TOT_MSCI = formulae.RegisterVectorNum(formulae.Registry, "default", "NAR_TOT_MSCI",
 	func(ctx *formulae.ProjContext, i int, coord *enum.Coordinate) (val float64) {
 		rs := ctx.ResultsStore
-		val = rs.GetArrayNum("NAR_TOT", coord, i) * rs.GetArrayNum("ASSET_MSCI_MIX", coord, i)
+		val = rs.GetNum("NAR_TOT", i, coord.Dims...) * rs.GetNum("ASSET_MSCI_MIX", i, coord.Dims...)
 		return
 	}, "ASSET_CATEGORY")
 
 var PIVOT_RC_SPD_BOND_TRAD = formulae.RegisterVectorNum(formulae.Registry, "default", "PIVOT_RC_SPD_BOND_TRAD",
 	func(ctx *formulae.ProjContext, i int, coord *enum.Coordinate) (val float64) {
 		rs := ctx.ResultsStore
-		spdParams := rs.GetArrayNum("STRESS_BOND_SPD_PARAMS", coord, i)
-		tradBondDist := rs.GetArrayNum("TRAD_BOND_DIST_FOR_CS_PCR", coord, i)
+		spdParams := rs.GetNum("STRESS_BOND_SPD_PARAMS", i, coord.Dims...)
+		tradBondDist := rs.GetNum("TRAD_BOND_DIST_FOR_CS_PCR", i, coord.Dims...)
 		bondTrad := rs.GetNum("BOND_TRAD", i)
 
 		val = bondTrad * tradBondDist * spdParams
@@ -231,8 +231,8 @@ var PIVOT_RC_SPD_BOND_TRAD = formulae.RegisterVectorNum(formulae.Registry, "defa
 var PIVOT_RC_SPD_BOND_ALT = formulae.RegisterVectorNum(formulae.Registry, "default", "PIVOT_RC_SPD_BOND_ALT",
 	func(ctx *formulae.ProjContext, i int, coord *enum.Coordinate) (val float64) {
 		rs := ctx.ResultsStore
-		spdParams := rs.GetArrayNum("STRESS_BOND_SPD_PARAMS", coord, i)
-		altBondDist := rs.GetArrayNum("ALT_BOND_DIST", coord, i)
+		spdParams := rs.GetNum("STRESS_BOND_SPD_PARAMS", i, coord.Dims...)
+		altBondDist := rs.GetNum("ALT_BOND_DIST", i, coord.Dims...)
 		bondAlt := rs.GetNum("BOND_ALT", i)
 
 		val = bondAlt * altBondDist * spdParams
@@ -242,7 +242,7 @@ var PIVOT_RC_SPD_BOND_ALT = formulae.RegisterVectorNum(formulae.Registry, "defau
 var PIVOT_RC_SPD_BOND = formulae.RegisterVectorNum(formulae.Registry, "default", "PIVOT_RC_SPD_BOND",
 	func(ctx *formulae.ProjContext, i int, coord *enum.Coordinate) (val float64) {
 		rs := ctx.ResultsStore
-		val = rs.GetArrayNum("PIVOT_RC_SPD_BOND_TRAD", coord, i) + rs.GetArrayNum("PIVOT_RC_SPD_BOND_ALT", coord, i)
+		val = rs.GetNum("PIVOT_RC_SPD_BOND_TRAD", i, coord.Dims...) + rs.GetNum("PIVOT_RC_SPD_BOND_ALT", i, coord.Dims...)
 		return
 	}, "ENUM_BOND_RATING", "ENUM_BOND_TERM")
 

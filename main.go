@@ -60,7 +60,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Run projection for each setting and each product component
+	// Run projection for each setting and each product unit
 	for _, s := range settings {
 		// 为每个 setting 创建日志目录
 		logdir := filepath.Join(s.ResultPath, ".log")

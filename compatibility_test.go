@@ -12,7 +12,7 @@ import (
 	"github.com/openact/kit/cache/v3"
 	"github.com/openact/kit/cli"
 	"github.com/openact/kit/resultmeta"
-	"github.com/openact/modelSAA/lib"
+	_ "github.com/openact/modelSAA/lib"
 	"gopkg.in/yaml.v3"
 )
 
@@ -90,6 +90,9 @@ func TestSAAConfiguredRunsPreserveFinancialResults(t *testing.T) {
 				t.Fatal("BOND_TYPE1 must define TRAD, ALT and NONE")
 			}
 			mappingContext := formulae.NewProjContext(setting, "1", "ALM", &formulae.ModelPoint{})
+			if !setting.Global.IsPreindexedFile("Assump") {
+				t.Fatal("Assump must be configured for preindexed table reads")
+			}
 			wantClasses := []string{
 				"Bond", "Bond", "Bond", "Bond", "Equity", "Equity", "Equity",
 				"Alternatives", "Alternatives", "Alternatives", "Alternatives", "Alternatives", "Alternatives",
@@ -97,7 +100,7 @@ func TestSAAConfiguredRunsPreserveFinancialResults(t *testing.T) {
 				"Cash", "Bond", "Bond", "Others",
 			}
 			for i, category := range wantCategories {
-				if got := lib.AssetClassByCategory(mappingContext, category); got != wantClasses[i] {
+				if got := mappingContext.ReadTableTxt("Assump", "Y", category, "ASSET_CLASS"); got != wantClasses[i] {
 					t.Fatalf("class for %s = %s, want %s", category, got, wantClasses[i])
 				}
 				wantBondType1 := "NONE"
@@ -119,12 +122,12 @@ func TestSAAConfiguredRunsPreserveFinancialResults(t *testing.T) {
 				t.Fatal("asset categories must be mapped in Assump, not a separate table")
 			}
 			if !reflect.DeepEqual(setting.GroupBy, []string{"SP_CODE", "ACCUM"}) ||
-				!reflect.DeepEqual(setting.Statistics, []formulae.StatisticsSpec{{Component: "ALM", Views: []string{"SP_CODE"}}}) {
+				!reflect.DeepEqual(setting.Statistics, []formulae.StatisticsSpec{{UnitName: "ALM", Views: []string{"SP_CODE"}}}) {
 				t.Fatalf("unexpected grouping/statistics: %v, %v", setting.GroupBy, setting.Statistics)
 			}
 			structure := localSAAStructure(t, setting)
 			if !reflect.DeepEqual(structure.Names, []string{"ALM"}) {
-				t.Fatalf("unexpected components: %v", structure.Names)
+				t.Fatalf("unexpected units: %v", structure.Names)
 			}
 			if !reflect.DeepEqual(setting.Simulations, []string{"1", "2", "3", "4"}) {
 				t.Fatalf("unexpected configured scenarios: %v", setting.Simulations)
@@ -175,48 +178,50 @@ func TestSAAScenarioStatisticsAndOutput(t *testing.T) {
 				"ALM_by_SP_CODE_average.fac":   false,
 				"stats/ALM_by_SP_CODE_min.fac": false, "stats/ALM_by_SP_CODE_max.fac": false,
 			}
-			for _, item := range metadata.Catalog.Products {
-				if _, ok := wantFiles[item.FileName]; !ok || item.Component != "ALM" {
-					t.Fatalf("unexpected catalog entry: %+v", item)
-				}
-				wantFiles[item.FileName] = true
-				table, err := cache.LoadTable(filepath.Join(setting.ResultPath, filepath.FromSlash(item.FileName)),
-					cache.LoadOptions{SuppressLoadLog: true})
-				if err != nil {
-					t.Fatal(err)
-				}
-				if item.Statistic == "" {
-					for sim, variables := range saaLegacyKRI {
-						for variable, want := range variables {
-							got, found, err := table.Float([]string{sim, "ALM", item.GroupValue, variable}, "202412")
-							if err != nil || !found {
-								t.Fatalf("missing scenario value %s/%s: %v", sim, variable, err)
+			for _, unit := range metadata.Catalog.Units {
+				for _, item := range unit.Outputs {
+					if _, ok := wantFiles[item.FileName]; !ok || unit.Name != "ALM" {
+						t.Fatalf("unexpected catalog entry: %+v", item)
+					}
+					wantFiles[item.FileName] = true
+					table, err := cache.LoadTable(filepath.Join(setting.ResultPath, filepath.FromSlash(item.FileName)),
+						cache.LoadOptions{SuppressLoadLog: true})
+					if err != nil {
+						t.Fatal(err)
+					}
+					if item.Statistic == "" {
+						for sim, variables := range saaLegacyKRI {
+							for variable, want := range variables {
+								got, found, err := table.Float([]string{sim, "ALM", item.GroupValue, variable}, "202412")
+								if err != nil || !found {
+									t.Fatalf("missing scenario value %s/%s: %v", sim, variable, err)
+								}
+								assertSAANumber(t, got, want)
 							}
-							assertSAANumber(t, got, want)
 						}
+						continue
 					}
-					continue
-				}
-				if item.GroupField != "SP_CODE" || item.GroupValue != "1" {
-					t.Fatalf("unexpected statistics identity: %+v", item)
-				}
-				for _, variable := range []string{"PORT_RETURN_RATE", "PORT_RISK", "PCR_TOTAL"} {
-					var values []float64
-					average := 0.0
-					for _, sim := range setting.Simulations {
-						value := saaLegacyKRI[sim][variable]
-						values = append(values, value)
-						average += value / float64(len(setting.Simulations))
+					if item.GroupField != "SP_CODE" || item.GroupValue != "1" {
+						t.Fatalf("unexpected statistics identity: %+v", item)
 					}
-					want, ok := map[string]float64{"average": average, "min": slices.Min(values), "max": slices.Max(values)}[item.Statistic]
-					if !ok {
-						t.Fatalf("unexpected statistic: %s", item.Statistic)
+					for _, variable := range []string{"PORT_RETURN_RATE", "PORT_RISK", "PCR_TOTAL"} {
+						var values []float64
+						average := 0.0
+						for _, sim := range setting.Simulations {
+							value := saaLegacyKRI[sim][variable]
+							values = append(values, value)
+							average += value / float64(len(setting.Simulations))
+						}
+						want, ok := map[string]float64{"average": average, "min": slices.Min(values), "max": slices.Max(values)}[item.Statistic]
+						if !ok {
+							t.Fatalf("unexpected statistic: %s", item.Statistic)
+						}
+						got, found, err := table.Float([]string{"ALM", "1", variable}, "202412")
+						if err != nil || !found {
+							t.Fatalf("missing statistic %s/%s: %v", item.Statistic, variable, err)
+						}
+						assertSAANumber(t, got, want)
 					}
-					got, found, err := table.Float([]string{"ALM", "1", variable}, "202412")
-					if err != nil || !found {
-						t.Fatalf("missing statistic %s/%s: %v", item.Statistic, variable, err)
-					}
-					assertSAANumber(t, got, want)
 				}
 			}
 			for file, found := range wantFiles {
