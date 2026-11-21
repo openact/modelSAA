@@ -369,7 +369,7 @@ globals:
 分组字段缺失、为空或类型为 `num` 时明确报错。
 
 所有分组/统计共用 run 根目录下的 `metadata\metadata.yaml`，
-catalog 按 component/view/group/statistic 标识结果，并记录相对于 run 的文件路径。
+catalog 按 unit/groupField/groupValue/statistic 标识结果，并记录相对于 run 的文件路径。
 只有整个 run 输出成功后才发布 `metadata\completion.yaml`；
 输出失败由 `RunProjection` 返回入口并非零退出。不要用旧版叶目录 metadata 或
 历史 FAC 判断本次运行成功，读取方应以本次 run catalog 和 completion 为准。
